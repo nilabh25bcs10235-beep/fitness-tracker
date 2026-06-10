@@ -13,9 +13,18 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Helpful startup log (does not print the actual key)
+if os.getenv("GROQ_API_KEY"):
+    print("✅ GROQ_API_KEY detected from environment (Render / hosting platform)")
+else:
+    print("⚠️  WARNING: GROQ_API_KEY is NOT set in the environment!")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
+    ).split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

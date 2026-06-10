@@ -15,9 +15,11 @@ try:
 except ImportError:
     pass
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-TEXT_MODEL = os.environ.get("GROQ_TEXT_MODEL", "llama-3.3-70b-versatile")
-VISION_MODEL = os.environ.get("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
+# Reads from environment variable (Render, Vercel, Railway, etc.)
+# The variable must be named exactly GROQ_API_KEY
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.3-70b-versatile")
+VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
 
 client = None
 if GROQ_API_KEY:
@@ -34,7 +36,11 @@ def _ai_available() -> bool:
 
 def _require_ai():
     if not _ai_available():
-        raise AIError("GROQ_API_KEY not configured. Add it to backend/.env")
+        raise AIError(
+            "GROQ_API_KEY not configured. "
+            "Make sure the GROQ_API_KEY environment variable is set "
+            "(e.g. in Render, Railway, or your hosting platform)."
+        )
 
 
 def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:

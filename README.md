@@ -18,17 +18,19 @@ AI-powered full-stack fitness and nutrition tracker with Indian non-veg, dairy-f
 
 ## Quick Start
 
-### 1. Backend
+> **Prerequisites**: Python 3.10+, Node.js 18+ (npm), pip
+
+### 1. Start the Backend (Terminal 1)
 
 ```bash
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
-# Add your GROQ_API_KEY to .env
+# IMPORTANT: Edit .env and add your real GROQ_API_KEY
 uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Frontend
+### 2. Start the Frontend (Terminal 2)
 
 ```bash
 cd frontend
@@ -36,7 +38,12 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173
+Then open **[http://localhost:5173](http://localhost:5173)**
+
+**Notes**
+- Keep **both** servers running (two separate terminals).
+- The frontend is configured to proxy `/api` and `/uploads` to the backend at `http://localhost:8000`.
+- Most features (meal analysis, recipes, AI coach) require a valid `GROQ_API_KEY` in `backend/.env`. Without it, the AI parts will be disabled or fail.
 
 ## Environment Variables
 
