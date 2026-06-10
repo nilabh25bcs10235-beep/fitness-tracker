@@ -1,0 +1,60 @@
+from datetime import datetime, date
+from sqlalchemy import Column, Integer, String, Float, DateTime, Date, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from .database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    age = Column(Integer, nullable=False)
+    weight_kg = Column(Float, nullable=False)
+    height_cm = Column(Float, nullable=True)
+    gender = Column(String(20), nullable=True)
+    goal = Column(String(50), nullable=False)
+    dietary_restrictions = Column(Text, default="")
+    daily_calorie_target = Column(Integer, nullable=True)
+    daily_protein_target = Column(Integer, nullable=True)
+    daily_carbs_target = Column(Integer, nullable=True)
+    daily_fat_target = Column(Integer, nullable=True)
+    target_reasoning = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
+    weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
+
+
+class Meal(Base):
+    __tablename__ = "meals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, default="")
+    meal_type = Column(String(30), default="snack")
+    calories = Column(Float, default=0)
+    protein_g = Column(Float, default=0)
+    carbs_g = Column(Float, default=0)
+    fat_g = Column(Float, default=0)
+    fiber_g = Column(Float, default=0)
+    image_path = Column(String(500), nullable=True)
+    ai_analysis = Column(Text, nullable=True)
+    logged_at = Column(DateTime, default=datetime.utcnow)
+    log_date = Column(Date, default=date.today)
+
+    user = relationship("User", back_populates="meals")
+
+
+class WeightLog(Base):
+    __tablename__ = "weight_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    weight_kg = Column(Float, nullable=False)
+    body_fat_pct = Column(Float, nullable=True)
+    muscle_mass_kg = Column(Float, nullable=True)
+    logged_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="weight_logs")
