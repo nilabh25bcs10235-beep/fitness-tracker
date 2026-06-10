@@ -6,4 +6,3 @@ python-multipart==0.0.9
 openai==1.35.0
 python-dotenv==1.0.1
 pillow==10.4.0
-maturin==1.7.0  # helps with some Rust builds, optional but can stabilize
