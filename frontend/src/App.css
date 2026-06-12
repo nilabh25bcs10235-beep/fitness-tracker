@@ -344,6 +344,12 @@ textarea {
   margin-bottom: 1rem;
 }
 
+.auth-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
 .loading-screen {
   display: grid;
   place-items: center;
