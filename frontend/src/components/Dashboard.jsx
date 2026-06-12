@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
+import DailyTracker from './DailyTracker';
 
 function MacroProgress({ label, current, target, unit }) {
   const pct = target > 0 ? Math.min(100, (current / target) * 100) : 0;
@@ -18,21 +20,35 @@ function MacroProgress({ label, current, target, unit }) {
   );
 }
 
-export default function Dashboard({ data, onLogWeight }) {
+export default function Dashboard({ data, tracker, onLogWeight, onSelectDay }) {
+  const [selectedDay, setSelectedDay] = useState(null);
+
   if (!data) return <div className="card">Loading dashboard...</div>;
 
   const { today, weekly_calories, weekly_protein, weight_trend, body_composition } = data;
+  const viewDay = selectedDay || tracker?.today;
+
+  const handleSelectDay = (day) => {
+    setSelectedDay(day);
+    onSelectDay?.(day);
+  };
 
   return (
     <div>
+      <DailyTracker
+        tracker={tracker}
+        selectedDay={viewDay}
+        onSelectDay={handleSelectDay}
+      />
+
       <div className="grid-4" style={{ marginBottom: '1rem' }}>
         <div className="stat-card">
-          <div className="value">{Math.round(today.total_calories)}</div>
-          <div className="label">Calories Today</div>
+          <div className="value">{Math.round(viewDay?.calories_consumed ?? today.total_calories)}</div>
+          <div className="label">Calories {viewDay?.is_today ? 'Today' : 'Logged'}</div>
         </div>
         <div className="stat-card">
-          <div className="value">{Math.round(today.total_protein)}g</div>
-          <div className="label">Protein Today</div>
+          <div className="value">{Math.round(viewDay?.protein_consumed ?? today.total_protein)}g</div>
+          <div className="label">Protein</div>
         </div>
         <div className="stat-card">
           <div className="value">{body_composition.current_weight_kg} kg</div>
@@ -46,15 +62,35 @@ export default function Dashboard({ data, onLogWeight }) {
 
       <div className="grid-2">
         <div className="card">
-          <h3>Today's Macros</h3>
+          <h3>{viewDay?.is_today ? "Today's Macros" : `${viewDay?.day_name} Macros`}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <MacroProgress label="Calories" current={today.total_calories} target={today.calorie_target || 0} unit="kcal" />
-            <MacroProgress label="Protein" current={today.total_protein} target={today.protein_target || 0} unit="g" />
-            {today.carbs_target > 0 && (
-              <MacroProgress label="Carbs" current={today.total_carbs} target={today.carbs_target} unit="g" />
+            <MacroProgress
+              label="Calories"
+              current={viewDay?.calories_consumed ?? today.total_calories}
+              target={(viewDay?.calorie_target ?? today.calorie_target) || 0}
+              unit="kcal"
+            />
+            <MacroProgress
+              label="Protein"
+              current={viewDay?.protein_consumed ?? today.total_protein}
+              target={(viewDay?.protein_target ?? today.protein_target) || 0}
+              unit="g"
+            />
+            {(viewDay?.calorie_target ?? today.carbs_target) > 0 && (
+              <MacroProgress
+                label="Carbs"
+                current={today.total_carbs}
+                target={today.carbs_target}
+                unit="g"
+              />
             )}
-            {today.fat_target > 0 && (
-              <MacroProgress label="Fat" current={today.total_fat} target={today.fat_target} unit="g" />
+            {(viewDay?.calorie_target ?? today.fat_target) > 0 && (
+              <MacroProgress
+                label="Fat"
+                current={today.total_fat}
+                target={today.fat_target}
+                unit="g"
+              />
             )}
           </div>
         </div>
@@ -76,7 +112,7 @@ export default function Dashboard({ data, onLogWeight }) {
               {body_composition.notes}
             </p>
           )}
-          <button className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={onLogWeight}>
+          <button type="button" className="btn btn-secondary" style={{ marginTop: '1rem' }} onClick={onLogWeight}>
             Log Weight
           </button>
         </div>

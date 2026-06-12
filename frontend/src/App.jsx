@@ -24,6 +24,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('dashboard');
   const [dashboard, setDashboard] = useState(null);
+  const [weeklyTracker, setWeeklyTracker] = useState(null);
   const [meals, setMeals] = useState([]);
   const [recipes, setRecipes] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -31,9 +32,14 @@ export default function App() {
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
-    const [dash, mealList] = await Promise.all([api.getDashboard(), api.getMeals()]);
+    const [dash, mealList, tracker] = await Promise.all([
+      api.getDashboard(),
+      api.getMeals(),
+      api.getWeeklyTracker(),
+    ]);
     setDashboard(dash);
     setMeals(mealList);
+    setWeeklyTracker(tracker);
     setUser(dash.user);
   }, []);
 
@@ -207,9 +213,11 @@ export default function App() {
         ))}
       </nav>
 
-      {tab === 'dashboard' && <Dashboard data={dashboard} onLogWeight={handleLogWeight} />}
+      {tab === 'dashboard' && (
+        <Dashboard data={dashboard} tracker={weeklyTracker} onLogWeight={handleLogWeight} />
+      )}
       {tab === 'meals' && <MealLogger meals={meals} onRefresh={refresh} />}
-      {tab === 'workouts' && <Workouts />}
+      {tab === 'workouts' && <Workouts onRefresh={refresh} />}
       {tab === 'recipes' && (
         <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} user={user} />
       )}

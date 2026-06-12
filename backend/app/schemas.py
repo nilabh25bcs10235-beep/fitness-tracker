@@ -74,6 +74,7 @@ class MealResponse(BaseModel):
     carbs_g: float
     fat_g: float
     fiber_g: float
+    health_score: Optional[str] = None
     image_path: Optional[str]
     ai_analysis: Optional[str]
     logged_at: datetime
@@ -81,6 +82,61 @@ class MealResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WorkoutCreate(BaseModel):
+    activity: str
+    body_part: str = ""
+    duration_min: int = Field(gt=0, le=300)
+    calories_burned: float = Field(ge=0)
+    intensity: str = "moderate"
+    notes: str = ""
+
+
+class WorkoutResponse(BaseModel):
+    id: int
+    activity: str
+    body_part: Optional[str]
+    duration_min: int
+    calories_burned: float
+    intensity: str
+    notes: Optional[str]
+    logged_at: datetime
+    log_date: date
+
+    class Config:
+        from_attributes = True
+
+
+class DayTracker(BaseModel):
+    date: date
+    day_name: str
+    short_name: str
+    is_today: bool
+    calorie_target: int
+    protein_target: int
+    workout_target_min: int
+    calories_consumed: float
+    protein_consumed: float
+    calories_burned: float
+    workout_minutes: int
+    meals_count: int
+    workouts_count: int
+    net_calories: float
+    calorie_progress_pct: float
+    protein_progress_pct: float
+    workout_progress_pct: float
+    overall_progress_pct: float
+    status: str
+
+
+class WeeklyTrackerResponse(BaseModel):
+    week_start: date
+    week_end: date
+    today: DayTracker
+    days: List[DayTracker]
+    today_focus: str
+    today_targets: dict
 
 
 class WeightLogCreate(BaseModel):

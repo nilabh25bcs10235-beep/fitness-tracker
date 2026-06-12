@@ -450,6 +450,184 @@ textarea {
   color: var(--accent);
 }
 
+.daily-tracker {
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.tracker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tracker-date {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0;
+}
+
+.tracker-overall .value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+  text-align: right;
+}
+
+.tracker-overall .label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.today-focus {
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.week-pills {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 1.25rem;
+}
+
+.day-pill {
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.5rem 0.25rem;
+  cursor: pointer;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.day-pill.active {
+  border-color: var(--accent);
+  color: var(--text);
+  background: rgba(34, 197, 94, 0.1);
+}
+
+.day-pill.today .day-pill-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.day-pill-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.day-pill-bar {
+  width: 100%;
+  height: 4px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.day-pill-bar span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 999px;
+}
+
+.tracker-rings {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.tracker-ring-wrap {
+  text-align: center;
+}
+
+.tracker-ring {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 0.5rem;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) var(--pct), var(--surface-2) 0);
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.tracker-ring::before {
+  content: '';
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--surface);
+  position: absolute;
+}
+
+.tracker-ring-value {
+  position: relative;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.tracker-ring-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.tracker-ring-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.today-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.health-score {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.health-excellent { background: rgba(34, 197, 94, 0.25); color: #86efac; }
+.health-very_good { background: rgba(59, 130, 246, 0.25); color: #93c5fd; }
+.health-good { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+.health-could_be_better { background: rgba(245, 158, 11, 0.25); color: #fcd34d; }
+.health-unhealthy { background: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+
+.health-score-banner {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+.saved-msg {
+  color: var(--accent);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 600px) {
+  .week-pills {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .tracker-rings {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 600px) {
   .grocery-list {
     columns: 1;

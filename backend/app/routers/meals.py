@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from datetime import date
@@ -11,6 +12,7 @@ from ..models import User, Meal
 from ..schemas import MealCreate, MealResponse, MealAnalysis
 from ..data.food_catalog import search_foods
 from ..llm.groq_client import estimate_meal_from_text, analyze_meal_image, AIError
+from ..services.health_scorer import score_meal_health
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
@@ -69,6 +71,20 @@ async def analyze_image(
         raise HTTPException(status_code=503, detail=str(e))
 
 
+def _attach_health_score(meal: Meal, user: User) -> None:
+    meal.health_score = score_meal_health(
+        calories=meal.calories,
+        protein_g=meal.protein_g,
+        carbs_g=meal.carbs_g,
+        fat_g=meal.fat_g,
+        fiber_g=meal.fiber_g,
+        daily_calorie_target=user.daily_calorie_target,
+        daily_protein_target=user.daily_protein_target,
+        goal=user.goal,
+        ai_analysis=meal.ai_analysis,
+    )
+
+
 @router.post("/me", response_model=MealResponse)
 def log_meal(
     payload: MealCreate,
@@ -76,6 +92,7 @@ def log_meal(
     db: Session = Depends(get_db),
 ):
     meal = Meal(user_id=user.id, log_date=date.today(), **payload.model_dump())
+    _attach_health_score(meal, user)
     db.add(meal)
     db.commit()
     db.refresh(meal)
@@ -101,6 +118,11 @@ async def log_meal_with_image(
     with open(filepath, "wb") as f:
         f.write(image_bytes)
 
+    ai_payload = json.dumps({
+        "micronutrients": analysis.get("micronutrients", {}),
+        "micro_description": analysis.get("micro_description", ""),
+        "notes": analysis.get("notes", ""),
+    })
     meal = Meal(
         user_id=user.id,
         name=analysis.get("name", "Meal from photo"),
@@ -112,9 +134,10 @@ async def log_meal_with_image(
         fat_g=analysis.get("fat_g", 0),
         fiber_g=analysis.get("fiber_g", 0),
         image_path=filename,
-        ai_analysis=analysis.get("notes", ""),
+        ai_analysis=ai_payload,
         log_date=date.today(),
     )
+    _attach_health_score(meal, user)
     db.add(meal)
     db.commit()
     db.refresh(meal)

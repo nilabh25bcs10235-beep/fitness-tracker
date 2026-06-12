@@ -12,8 +12,10 @@ from ..schemas import (
     ProgressDashboard,
     WeightLogCreate,
     WeightLogResponse,
+    WeeklyTrackerResponse,
 )
 from ..llm.groq_client import estimate_body_composition, AIError
+from ..services.weekly_tracker import build_weekly_tracker
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
@@ -105,6 +107,11 @@ def get_dashboard(user: User = Depends(get_user_profile), db: Session = Depends(
         weight_trend=weight_trend,
         body_composition=body_composition,
     )
+
+
+@router.get("/me/weekly-tracker", response_model=WeeklyTrackerResponse)
+def get_weekly_tracker(user: User = Depends(get_user_profile), db: Session = Depends(get_db)):
+    return build_weekly_tracker(user, db)
 
 
 @router.post("/me/weight", response_model=WeightLogResponse)

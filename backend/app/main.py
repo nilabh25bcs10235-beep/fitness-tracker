@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import users, meals, progress, recipes, ai
+from .routers import users, meals, progress, recipes, ai, workouts
 
 
 def _ensure_user_auth_columns():
@@ -26,8 +26,24 @@ def _ensure_user_auth_columns():
             conn.execute(text(stmt))
 
 
+def _ensure_schema_updates():
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    statements = []
+    if "meals" in tables:
+        meal_cols = {col["name"] for col in inspector.get_columns("meals")}
+        if "health_score" not in meal_cols:
+            statements.append("ALTER TABLE meals ADD COLUMN health_score VARCHAR(30)")
+    if not statements:
+        return
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+
 Base.metadata.create_all(bind=engine)
 _ensure_user_auth_columns()
+_ensure_schema_updates()
 
 app = FastAPI(
     title="FitTrack AI",
@@ -66,6 +82,7 @@ app.include_router(meals.router)
 app.include_router(progress.router)
 app.include_router(recipes.router)
 app.include_router(ai.router)
+app.include_router(workouts.router)
 
 
 @app.get("/api/health")

@@ -59,6 +59,8 @@ export const api = {
 
   getDashboard: () => request('/api/progress/me/dashboard'),
 
+  getWeeklyTracker: () => request('/api/progress/me/weekly-tracker'),
+
   getMeals: (logDate) =>
     request(`/api/meals/me${logDate ? `?log_date=${logDate}` : ''}`),
 
@@ -131,4 +133,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     }),
+
+  logWorkout: (data) =>
+    request('/api/workouts/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
+  getWorkouts: (logDate) =>
+    request(`/api/workouts/me${logDate ? `?log_date=${logDate}` : ''}`),
 };

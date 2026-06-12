@@ -6,7 +6,7 @@ const BODY_PARTS = [
   'legs', 'glutes', 'core', 'full body', 'cardio',
 ];
 
-export default function Workouts() {
+export default function Workouts({ onRefresh }) {
   const [bodyPart, setBodyPart] = useState('back');
   const [customPart, setCustomPart] = useState('');
   const [plan, setPlan] = useState(null);
@@ -16,6 +16,7 @@ export default function Workouts() {
   const [burnResult, setBurnResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
 
   const loadExercises = async () => {
     const target = customPart.trim() || bodyPart;
@@ -106,8 +107,34 @@ export default function Workouts() {
                 ))}
               </div>
             )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ marginTop: '0.75rem' }}
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  await api.logWorkout({
+                    activity: burnResult.activity,
+                    duration_min: burnResult.duration_min,
+                    calories_burned: burnResult.calories_burned,
+                    intensity,
+                  });
+                  setSavedMsg('Workout saved to today\'s tracker!');
+                  onRefresh?.();
+                } catch (e) {
+                  setError(e.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              Save to Daily Tracker
+            </button>
           </div>
         )}
+        {savedMsg && <p className="saved-msg">{savedMsg}</p>}
       </div>
 
       <div className="card">
@@ -171,6 +198,35 @@ export default function Workouts() {
                 {plan.tips.map((t, i) => <li key={i}>{t}</li>)}
               </ul>
             )}
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ marginTop: '0.75rem' }}
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const totalCal = plan.exercises.reduce((s, ex) => s + (ex.calories_burned_est || 0), 0);
+                  const totalMin = plan.exercises.length * 8;
+                  await api.logWorkout({
+                    activity: `${plan.body_part} training`,
+                    body_part: plan.body_part,
+                    duration_min: totalMin,
+                    calories_burned: totalCal,
+                    intensity: 'moderate',
+                    notes: plan.exercises.map((e) => e.name).join(', '),
+                  });
+                  setSavedMsg(`${plan.body_part} workout saved to today's tracker!`);
+                  onRefresh?.();
+                } catch (e) {
+                  setError(e.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+            >
+              Log This Workout
+            </button>
           </div>
         )}
       </div>

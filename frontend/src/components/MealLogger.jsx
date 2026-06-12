@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { HEALTH_LABELS, healthScoreClass } from '../lib/healthScore';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -62,6 +63,7 @@ export default function MealLogger({ meals, onRefresh }) {
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
+  const [lastHealthScore, setLastHealthScore] = useState(null);
   const suggestRef = useRef(null);
   const analyzeRef = useRef(null);
   const inputRef = useRef(null);
@@ -139,7 +141,7 @@ export default function MealLogger({ meals, onRefresh }) {
           })
         : null;
 
-      await api.logMeal({
+      const saved = await api.logMeal({
         name: data.name,
         description: data.description || description,
         meal_type: mealType,
@@ -150,6 +152,7 @@ export default function MealLogger({ meals, onRefresh }) {
         fiber_g: data.fiber_g,
         ai_analysis: microPayload,
       });
+      setLastHealthScore(saved.health_score);
       setDescription('');
       setAnalysis(null);
       setSuggestions([]);
@@ -244,6 +247,12 @@ export default function MealLogger({ meals, onRefresh }) {
           </label>
         </div>
 
+        {lastHealthScore && (
+          <div className={`health-score-banner ${healthScoreClass(lastHealthScore)}`}>
+            Health score: <strong>{HEALTH_LABELS[lastHealthScore] || lastHealthScore}</strong>
+          </div>
+        )}
+
         {error && <p className="error">{error}</p>}
       </div>
 
@@ -255,6 +264,11 @@ export default function MealLogger({ meals, onRefresh }) {
               <div>
                 <strong>{m.name}</strong>
                 <span className="badge" style={{ marginLeft: '0.5rem' }}>{m.meal_type}</span>
+                {m.health_score && (
+                  <span className={healthScoreClass(m.health_score)} style={{ marginLeft: '0.4rem' }}>
+                    {HEALTH_LABELS[m.health_score]}
+                  </span>
+                )}
                 {m.image_path && <span className="badge" style={{ marginLeft: '0.3rem' }}>📷 AI</span>}
               </div>
               <div style={{ textAlign: 'right', fontSize: '0.85rem' }}>

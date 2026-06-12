@@ -27,6 +27,7 @@ class User(Base):
 
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
     weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
+    workouts = relationship("WorkoutLog", back_populates="user", cascade="all, delete-orphan")
 
 
 class Meal(Base):
@@ -42,6 +43,7 @@ class Meal(Base):
     carbs_g = Column(Float, default=0)
     fat_g = Column(Float, default=0)
     fiber_g = Column(Float, default=0)
+    health_score = Column(String(30), nullable=True)
     image_path = Column(String(500), nullable=True)
     ai_analysis = Column(Text, nullable=True)
     logged_at = Column(DateTime, default=datetime.utcnow)
@@ -61,3 +63,20 @@ class WeightLog(Base):
     logged_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("User", back_populates="weight_logs")
+
+
+class WorkoutLog(Base):
+    __tablename__ = "workout_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    activity = Column(String(200), nullable=False)
+    body_part = Column(String(100), nullable=True)
+    duration_min = Column(Integer, default=0)
+    calories_burned = Column(Float, default=0)
+    intensity = Column(String(30), default="moderate")
+    notes = Column(Text, nullable=True)
+    logged_at = Column(DateTime, default=datetime.utcnow)
+    log_date = Column(Date, default=date.today)
+
+    user = relationship("User", back_populates="workouts")
