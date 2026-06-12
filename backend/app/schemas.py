@@ -4,6 +4,8 @@ from pydantic import BaseModel, Field
 
 
 class UserCreate(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
     name: str
     age: int = Field(ge=10, le=120)
     weight_kg: float = Field(gt=0)
@@ -15,6 +17,8 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    email: Optional[str] = None
+    phone: Optional[str] = None
     name: str
     age: int
     weight_kg: float

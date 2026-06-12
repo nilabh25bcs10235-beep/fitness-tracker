@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import './App.css';
 import { api } from './api';
+import { supabase, supabaseConfigured } from './lib/supabase';
+import AuthScreen from './components/AuthScreen';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
 import MealLogger from './components/MealLogger';
@@ -15,7 +17,8 @@ const TABS = [
 ];
 
 export default function App() {
-  const [userId, setUserId] = useState(() => localStorage.getItem('fittrack_user_id'));
+  const [session, setSession] = useState(null);
+  const [authReady, setAuthReady] = useState(!supabaseConfigured);
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('dashboard');
   const [dashboard, setDashboard] = useState(null);
@@ -23,43 +26,104 @@ export default function App() {
   const [recipes, setRecipes] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
-    if (!userId) return;
-    const [dash, mealList] = await Promise.all([
-      api.getDashboard(userId),
-      api.getMeals(userId),
-    ]);
+    const [dash, mealList] = await Promise.all([api.getDashboard(), api.getMeals()]);
     setDashboard(dash);
     setMeals(mealList);
     setUser(dash.user);
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     api.health().then((h) => setAiEnabled(h.ai_enabled)).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (userId) refresh();
-  }, [userId, refresh]);
+    if (!supabaseConfigured) return undefined;
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+      if (!nextSession) {
+        setUser(null);
+        setDashboard(null);
+        setMeals([]);
+        setRecipes(null);
+      }
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
+
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const profile = await api.getMe();
+        if (cancelled) return;
+        setUser(profile);
+        await refresh();
+      } catch (err) {
+        if (cancelled) return;
+        if (err.status === 404) {
+          setUser(null);
+        } else {
+          setError(err.message || 'Failed to load your profile');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session, refresh]);
 
   const handleOnboard = async (form) => {
     setLoading(true);
+    setError('');
     try {
-      const u = await api.createUser(form);
-      localStorage.setItem('fittrack_user_id', u.id);
-      setUserId(String(u.id));
-      setUser(u);
+      const payload = {
+        ...form,
+        email: session?.user?.email || null,
+        phone: session?.user?.phone || null,
+      };
+      const profile = await api.createUser(payload);
+      setUser(profile);
+      await refresh();
+    } catch (err) {
+      setError(err.message || 'Could not create your profile');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLogout = async () => {
+    if (supabaseConfigured) {
+      await supabase.auth.signOut();
+    }
+    setSession(null);
+    setUser(null);
+    setDashboard(null);
+    setMeals([]);
+    setRecipes(null);
+    setTab('dashboard');
+  };
+
   const loadRecipes = async () => {
-    if (!userId) return;
     setLoading(true);
     try {
-      const r = await api.getRecipes(userId);
+      const r = await api.getRecipes();
       setRecipes(r);
     } finally {
       setLoading(false);
@@ -69,16 +133,37 @@ export default function App() {
   const handleLogWeight = async () => {
     const w = prompt('Enter your current weight (kg):');
     if (!w || isNaN(w)) return;
-    await api.logWeight(userId, { weight_kg: parseFloat(w) });
+    await api.logWeight({ weight_kg: parseFloat(w) });
     refresh();
   };
 
-  if (!userId) {
+  if (!authReady) {
+    return <div className="app loading-screen">Loading...</div>;
+  }
+
+  if (supabaseConfigured && !session) {
     return (
       <div className="app">
         <header className="app-header">
           <div className="logo">FitTrack AI</div>
         </header>
+        <AuthScreen onAuthenticated={() => supabase.auth.getSession().then(({ data }) => setSession(data.session))} />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="app">
+        <header className="app-header">
+          <div className="logo">FitTrack AI</div>
+          {session && (
+            <button type="button" className="btn btn-ghost" onClick={handleLogout}>
+              Sign out
+            </button>
+          )}
+        </header>
+        {error && <p className="auth-error">{error}</p>}
         <Onboarding onComplete={handleOnboard} loading={loading} />
       </div>
     );
@@ -93,10 +178,17 @@ export default function App() {
             Hi {user?.name || 'there'} · {user?.goal?.replace('_', ' ')}
           </div>
         </div>
-        <span className={`ai-status ${aiEnabled ? 'on' : ''}`}>
-          {aiEnabled ? '● Groq AI Online' : '○ Groq AI Offline'}
-        </span>
+        <div className="header-actions">
+          <span className={`ai-status ${aiEnabled ? 'on' : ''}`}>
+            {aiEnabled ? '● Groq AI Online' : '○ Groq AI Offline'}
+          </span>
+          <button type="button" className="btn btn-ghost" onClick={handleLogout}>
+            Sign out
+          </button>
+        </div>
       </header>
+
+      {error && <p className="auth-error">{error}</p>}
 
       <nav className="tabs">
         {TABS.map((t) => (
@@ -113,16 +205,10 @@ export default function App() {
         ))}
       </nav>
 
-      {tab === 'dashboard' && (
-        <Dashboard data={dashboard} onLogWeight={handleLogWeight} />
-      )}
-      {tab === 'meals' && (
-        <MealLogger userId={userId} meals={meals} onRefresh={refresh} />
-      )}
-      {tab === 'recipes' && (
-        <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} />
-      )}
-      {tab === 'ai' && <AIInsights userId={userId} />}
+      {tab === 'dashboard' && <Dashboard data={dashboard} onLogWeight={handleLogWeight} />}
+      {tab === 'meals' && <MealLogger meals={meals} onRefresh={refresh} />}
+      {tab === 'recipes' && <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} />}
+      {tab === 'ai' && <AIInsights />}
     </div>
   );
 }

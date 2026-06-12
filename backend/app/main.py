@@ -2,10 +2,32 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import inspect, text
 from .database import engine, Base
 from .routers import users, meals, progress, recipes, ai
 
+
+def _ensure_user_auth_columns():
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {col["name"] for col in inspector.get_columns("users")}
+    statements = []
+    if "auth_id" not in columns:
+        statements.append("ALTER TABLE users ADD COLUMN auth_id VARCHAR(36)")
+    if "email" not in columns:
+        statements.append("ALTER TABLE users ADD COLUMN email VARCHAR(255)")
+    if "phone" not in columns:
+        statements.append("ALTER TABLE users ADD COLUMN phone VARCHAR(32)")
+    if not statements:
+        return
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+
 Base.metadata.create_all(bind=engine)
+_ensure_user_auth_columns()
 
 app = FastAPI(
     title="FitTrack AI",

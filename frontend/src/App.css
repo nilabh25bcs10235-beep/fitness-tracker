@@ -286,6 +286,71 @@ textarea {
   margin-top: 0.5rem;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--surface-2);
+  color: var(--muted);
+}
+
+.btn-ghost:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.auth-card {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.auth-subtitle {
+  color: var(--muted);
+  margin-bottom: 1.25rem;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.auth-tabs button {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+
+.auth-tabs button.active {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.auth-form,
+.auth-provider-btn {
+  width: 100%;
+}
+
+.auth-error {
+  color: var(--danger);
+  margin-bottom: 1rem;
+}
+
+.loading-screen {
+  display: grid;
+  place-items: center;
+  min-height: 50vh;
+  color: var(--muted);
+}
+
 @media (max-width: 600px) {
   .grocery-list {
     columns: 1;

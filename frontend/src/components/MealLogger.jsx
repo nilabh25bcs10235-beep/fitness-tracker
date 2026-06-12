@@ -3,7 +3,7 @@ import { api } from '../api';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 
-export default function MealLogger({ userId, meals, onRefresh }) {
+export default function MealLogger({ meals, onRefresh }) {
   const [description, setDescription] = useState('');
   const [mealType, setMealType] = useState('lunch');
   const [analysis, setAnalysis] = useState(null);
@@ -15,7 +15,7 @@ export default function MealLogger({ userId, meals, onRefresh }) {
     setLoading(true);
     setError('');
     try {
-      const result = await api.analyzeText(userId, description);
+      const result = await api.analyzeText(description);
       setAnalysis(result);
     } catch (e) {
       setError(e.message);
@@ -36,7 +36,7 @@ export default function MealLogger({ userId, meals, onRefresh }) {
     };
     setLoading(true);
     try {
-      await api.logMeal(userId, {
+      await api.logMeal({
         name: data.name,
         description: data.description || description,
         meal_type: mealType,
@@ -62,7 +62,7 @@ export default function MealLogger({ userId, meals, onRefresh }) {
     setLoading(true);
     setError('');
     try {
-      await api.analyzeAndLogImage(userId, file, mealType);
+      await api.analyzeAndLogImage(file, mealType);
       onRefresh();
     } catch (err) {
       setError(err.message);

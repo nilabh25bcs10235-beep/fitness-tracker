@@ -1,11 +1,17 @@
 from datetime import date, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from ..database import get_db
+from ..deps import get_user_profile
 from ..models import User, Meal, WeightLog
 from ..schemas import (
-    UserResponse, DailySummary, ProgressDashboard,
-    WeightLogCreate, WeightLogResponse,
+    UserResponse,
+    DailySummary,
+    ProgressDashboard,
+    WeightLogCreate,
+    WeightLogResponse,
 )
 from ..llm.groq_client import estimate_body_composition, AIError
 
@@ -28,12 +34,8 @@ def _daily_summary(user: User, target_date: date, db: Session) -> DailySummary:
     )
 
 
-@router.get("/{user_id}/dashboard", response_model=ProgressDashboard)
-def get_dashboard(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
+@router.get("/me/dashboard", response_model=ProgressDashboard)
+def get_dashboard(user: User = Depends(get_user_profile), db: Session = Depends(get_db)):
     today = _daily_summary(user, date.today(), db)
 
     weekly_calories = []
@@ -55,7 +57,7 @@ def get_dashboard(user_id: int, db: Session = Depends(get_db)):
 
     weight_logs = (
         db.query(WeightLog)
-        .filter(WeightLog.user_id == user_id)
+        .filter(WeightLog.user_id == user.id)
         .order_by(WeightLog.logged_at.asc())
         .limit(30)
         .all()
@@ -105,13 +107,13 @@ def get_dashboard(user_id: int, db: Session = Depends(get_db)):
     )
 
 
-@router.post("/{user_id}/weight", response_model=WeightLogResponse)
-def log_weight(user_id: int, payload: WeightLogCreate, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    log = WeightLog(user_id=user_id, **payload.model_dump())
+@router.post("/me/weight", response_model=WeightLogResponse)
+def log_weight(
+    payload: WeightLogCreate,
+    user: User = Depends(get_user_profile),
+    db: Session = Depends(get_db),
+):
+    log = WeightLog(user_id=user.id, **payload.model_dump())
     user.weight_kg = payload.weight_kg
     db.add(log)
     db.commit()

@@ -8,7 +8,7 @@ const QUICK_PROMPTS = [
   'How am I doing on calories today?',
 ];
 
-export default function AIInsights({ userId }) {
+export default function AIInsights() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ export default function AIInsights({ userId }) {
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const res = await api.getInsight(userId, text);
+      const res = await api.getInsight(text);
       setResult(res);
       if (!q) setQuery(text);
     } catch (e) {

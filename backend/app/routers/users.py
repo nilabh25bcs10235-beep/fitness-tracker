@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from ..database import get_db
+from ..deps import get_auth_id, get_user_profile
 from ..models import User
 from ..schemas import UserCreate, UserResponse
 from ..llm.groq_client import calculate_targets, AIError
@@ -9,7 +11,15 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 @router.post("", response_model=UserResponse)
-def create_user(payload: UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    payload: UserCreate,
+    auth_id: str = Depends(get_auth_id),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(User).filter(User.auth_id == auth_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Profile already exists for this account.")
+
     try:
         targets = calculate_targets(
             payload.age,
@@ -23,6 +33,9 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail=str(e))
 
     user = User(
+        auth_id=auth_id,
+        email=payload.email,
+        phone=payload.phone,
         name=payload.name,
         age=payload.age,
         weight_kg=payload.weight_kg,
@@ -42,14 +55,6 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     return user
 
 
-@router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+@router.get("/me", response_model=UserResponse)
+def get_me(user: User = Depends(get_user_profile)):
     return user
-
-
-@router.get("", response_model=list[UserResponse])
-def list_users(db: Session = Depends(get_db)):
-    return db.query(User).order_by(User.created_at.desc()).all()

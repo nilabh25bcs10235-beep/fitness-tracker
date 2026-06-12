@@ -1,9 +1,12 @@
 import os
 import uuid
 from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
+
 from ..database import get_db
+from ..deps import get_user_profile
 from ..models import User, Meal
 from ..schemas import MealCreate, MealResponse, MealAnalysis
 from ..llm.groq_client import estimate_meal_from_text, analyze_meal_image, AIError
@@ -30,10 +33,10 @@ def _to_meal_analysis(result: dict) -> MealAnalysis:
 
 
 @router.post("/analyze-text", response_model=MealAnalysis)
-def analyze_text(description: str, user_id: int, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+def analyze_text(
+    description: str,
+    user: User = Depends(get_user_profile),
+):
     try:
         result = estimate_meal_from_text(description, user.dietary_restrictions)
         return _to_meal_analysis(result)
@@ -43,15 +46,10 @@ def analyze_text(description: str, user_id: int, db: Session = Depends(get_db)):
 
 @router.post("/analyze-image", response_model=MealAnalysis)
 async def analyze_image(
-    user_id: int = Form(...),
     meal_type: str = Form("lunch"),
     file: UploadFile = File(...),
-    db: Session = Depends(get_db),
+    user: User = Depends(get_user_profile),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     image_bytes = await file.read()
     try:
         result = analyze_meal_image(image_bytes, user.dietary_restrictions)
@@ -60,30 +58,26 @@ async def analyze_image(
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@router.post("/{user_id}", response_model=MealResponse)
-def log_meal(user_id: int, payload: MealCreate, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    meal = Meal(user_id=user_id, log_date=date.today(), **payload.model_dump())
+@router.post("/me", response_model=MealResponse)
+def log_meal(
+    payload: MealCreate,
+    user: User = Depends(get_user_profile),
+    db: Session = Depends(get_db),
+):
+    meal = Meal(user_id=user.id, log_date=date.today(), **payload.model_dump())
     db.add(meal)
     db.commit()
     db.refresh(meal)
     return meal
 
 
-@router.post("/{user_id}/with-image", response_model=MealResponse)
+@router.post("/me/with-image", response_model=MealResponse)
 async def log_meal_with_image(
-    user_id: int,
     meal_type: str = Form("lunch"),
     file: UploadFile = File(...),
+    user: User = Depends(get_user_profile),
     db: Session = Depends(get_db),
 ):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     image_bytes = await file.read()
     try:
         analysis = analyze_meal_image(image_bytes, user.dietary_restrictions)
@@ -97,7 +91,7 @@ async def log_meal_with_image(
         f.write(image_bytes)
 
     meal = Meal(
-        user_id=user_id,
+        user_id=user.id,
         name=analysis.get("name", "Meal from photo"),
         description=analysis.get("description", ""),
         meal_type=meal_type,
@@ -116,9 +110,13 @@ async def log_meal_with_image(
     return meal
 
 
-@router.get("/{user_id}", response_model=list[MealResponse])
-def get_meals(user_id: int, log_date: date | None = None, db: Session = Depends(get_db)):
-    query = db.query(Meal).filter(Meal.user_id == user_id)
+@router.get("/me", response_model=list[MealResponse])
+def get_meals(
+    log_date: date | None = None,
+    user: User = Depends(get_user_profile),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Meal).filter(Meal.user_id == user.id)
     if log_date:
         query = query.filter(Meal.log_date == log_date)
     return query.order_by(Meal.logged_at.desc()).all()

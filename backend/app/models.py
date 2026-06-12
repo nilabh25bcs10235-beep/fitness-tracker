@@ -8,6 +8,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    auth_id = Column(String(36), unique=True, index=True, nullable=True)
+    email = Column(String(255), nullable=True)
+    phone = Column(String(32), nullable=True)
     name = Column(String(100), nullable=False)
     age = Column(Integer, nullable=False)
     weight_kg = Column(Float, nullable=False)

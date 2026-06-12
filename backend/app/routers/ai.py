@@ -1,7 +1,10 @@
 from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from ..database import get_db
+from ..deps import get_user_profile
 from ..models import User, Meal
 from ..schemas import InsightRequest, InsightResponse
 from ..llm.groq_client import get_smart_insight, AIError
@@ -9,13 +12,13 @@ from ..llm.groq_client import get_smart_insight, AIError
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
-@router.post("/{user_id}/insight", response_model=InsightResponse)
-def get_insight(user_id: int, payload: InsightRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    today_meals = db.query(Meal).filter(Meal.user_id == user_id, Meal.log_date == date.today()).all()
+@router.post("/me/insight", response_model=InsightResponse)
+def get_insight(
+    payload: InsightRequest,
+    user: User = Depends(get_user_profile),
+    db: Session = Depends(get_db),
+):
+    today_meals = db.query(Meal).filter(Meal.user_id == user.id, Meal.log_date == date.today()).all()
     today_macros = {
         "calories": sum(m.calories for m in today_meals),
         "protein": sum(m.protein_g for m in today_meals),
