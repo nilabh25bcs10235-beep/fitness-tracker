@@ -3,7 +3,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fitness.db")
+DATABASE_URL = (os.getenv("DATABASE_URL") or "sqlite:///./fitness.db").strip()
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
