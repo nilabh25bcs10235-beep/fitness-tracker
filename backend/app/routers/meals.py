@@ -9,6 +9,7 @@ from ..database import get_db
 from ..deps import get_user_profile
 from ..models import User, Meal
 from ..schemas import MealCreate, MealResponse, MealAnalysis
+from ..data.food_catalog import search_foods
 from ..llm.groq_client import estimate_meal_from_text, analyze_meal_image, AIError
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
@@ -19,6 +20,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def _to_meal_analysis(result: dict) -> MealAnalysis:
     if result.get("error"):
         raise AIError(result["error"])
+    micros = result.get("micronutrients") or {}
+    if not isinstance(micros, dict):
+        micros = {}
     return MealAnalysis(
         name=result.get("name", "Meal"),
         description=result.get("description", ""),
@@ -29,7 +33,14 @@ def _to_meal_analysis(result: dict) -> MealAnalysis:
         fiber_g=float(result.get("fiber_g", 0)),
         confidence=result.get("confidence", "medium"),
         notes=result.get("notes", ""),
+        micronutrients={k: float(v) for k, v in micros.items() if v is not None},
+        micro_description=result.get("micro_description", ""),
     )
+
+
+@router.get("/food-suggestions")
+def food_suggestions(q: str = "", user: User = Depends(get_user_profile)):
+    return {"suggestions": search_foods(q)}
 
 
 @router.post("/analyze-text", response_model=MealAnalysis)

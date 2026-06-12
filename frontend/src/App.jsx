@@ -8,10 +8,12 @@ import Dashboard from './components/Dashboard';
 import MealLogger from './components/MealLogger';
 import Recipes from './components/Recipes';
 import AIInsights from './components/AIInsights';
+import Workouts from './components/Workouts';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'meals', label: 'Log Meals' },
+  { id: 'workouts', label: 'Workouts' },
   { id: 'recipes', label: 'Recipes' },
   { id: 'ai', label: 'AI Coach' },
 ];
@@ -207,7 +209,10 @@ export default function App() {
 
       {tab === 'dashboard' && <Dashboard data={dashboard} onLogWeight={handleLogWeight} />}
       {tab === 'meals' && <MealLogger meals={meals} onRefresh={refresh} />}
-      {tab === 'recipes' && <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} />}
+      {tab === 'workouts' && <Workouts />}
+      {tab === 'recipes' && (
+        <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} user={user} />
+      )}
       {tab === 'ai' && <AIInsights />}
     </div>
   );

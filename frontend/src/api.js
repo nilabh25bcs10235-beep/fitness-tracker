@@ -31,6 +31,20 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+async function uploadFile(path, formData) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.json();
+}
+
 export const api = {
   health: () => request('/api/health'),
 
@@ -60,18 +74,21 @@ export const api = {
       method: 'POST',
     }),
 
+  getFoodSuggestions: (q) =>
+    request(`/api/meals/food-suggestions?q=${encodeURIComponent(q)}`),
+
+  analyzeMealImage: async (file, mealType = 'lunch') => {
+    const form = new FormData();
+    form.append('meal_type', mealType);
+    form.append('file', file);
+    return uploadFile('/api/meals/analyze-image', form);
+  },
+
   analyzeAndLogImage: async (file, mealType) => {
     const form = new FormData();
     form.append('meal_type', mealType);
     form.append('file', file);
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/api/meals/me/with-image`, {
-      method: 'POST',
-      headers,
-      body: form,
-    });
-    if (!res.ok) throw new Error('Image analysis failed');
-    return res.json();
+    return uploadFile('/api/meals/me/with-image', form);
   },
 
   logWeight: (data) =>
@@ -83,10 +100,35 @@ export const api = {
 
   getRecipes: () => request('/api/recipes/me'),
 
+  generateRecipes: (preferences) =>
+    request('/api/recipes/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preferences),
+    }),
+
   getInsight: (query) =>
     request('/api/ai/me/insight', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
+    }),
+
+  analyzeBodyImage: async (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return uploadFile('/api/ai/me/body-image', form);
+  },
+
+  getExercises: (bodyPart) =>
+    request(`/api/ai/me/exercises?body_part=${encodeURIComponent(bodyPart)}`, {
+      method: 'POST',
+    }),
+
+  estimateCalorieBurn: (data) =>
+    request('/api/ai/me/calorie-burn', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
     }),
 };

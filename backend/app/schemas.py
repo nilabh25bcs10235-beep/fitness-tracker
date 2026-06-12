@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel, Field
 
 
@@ -46,6 +46,7 @@ class MealCreate(BaseModel):
     carbs_g: float = 0
     fat_g: float = 0
     fiber_g: float = 0
+    ai_analysis: Optional[str] = None
 
 
 class MealAnalysis(BaseModel):
@@ -58,6 +59,8 @@ class MealAnalysis(BaseModel):
     fiber_g: float
     confidence: str
     notes: str
+    micronutrients: Dict[str, float] = {}
+    micro_description: str = ""
 
 
 class MealResponse(BaseModel):
@@ -128,12 +131,65 @@ class RecipeItem(BaseModel):
     ingredients: List[str]
     instructions: List[str]
     tags: List[str]
+    frequency: str = ""
+    timing: str = ""
+    variants: List[str] = []
+
+
+class RecipePreferences(BaseModel):
+    dietary_restrictions: str = ""
+    preferences: str = ""
+    goals: str = ""
+    count: int = 4
 
 
 class RecipeResponse(BaseModel):
     recipes: List[RecipeItem]
     grocery_list: List[str]
     ai_notes: str
+    consumption_schedule: List[str] = []
+
+
+class BodyImageAnalysis(BaseModel):
+    estimated_bmi: float
+    body_fat_pct: Optional[float] = None
+    muscle_mass_kg: Optional[float] = None
+    physique_notes: str
+    nutritional_advice: str
+    goal_recommendations: List[str]
+    confidence: str
+
+
+class ExerciseItem(BaseModel):
+    name: str
+    body_part: str
+    equipment: str
+    type: str
+    sets: int
+    reps: str
+    calories_burned_est: int
+    notes: str
+
+
+class ExercisePlanResponse(BaseModel):
+    body_part: str
+    exercises: List[ExerciseItem]
+    cardio_options: List[str]
+    tips: List[str]
+
+
+class CalorieBurnRequest(BaseModel):
+    activity: str
+    duration_min: int = Field(gt=0, le=300)
+    intensity: str = "moderate"
+
+
+class CalorieBurnResponse(BaseModel):
+    activity: str
+    duration_min: int
+    calories_burned: int
+    notes: str
+    related_exercises: List[str]
 
 
 class InsightRequest(BaseModel):
