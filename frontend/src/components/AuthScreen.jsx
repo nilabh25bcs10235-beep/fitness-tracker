@@ -47,32 +47,20 @@ export default function AuthScreen({ onAuthenticated }) {
     }
   };
 
-  const handleEmailOtp = async (e) => {
+  const handleEmailLink = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      if (!otpSent) {
-        const { error: authError } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: {
-            shouldCreateUser: true,
-            emailRedirectTo: window.location.origin,
-          },
-        });
-        if (authError) throw authError;
-        setOtpSent(true);
-      } else if (otp.trim()) {
-        const { error: authError } = await supabase.auth.verifyOtp({
-          email: email.trim(),
-          token: otp.trim(),
-          type: 'email',
-        });
-        if (authError) throw authError;
-        onAuthenticated?.();
-      } else {
-        setError('Enter the 6-digit code from your email, or click the magic link in the email.');
-      }
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: window.location.origin,
+        },
+      });
+      if (authError) throw authError;
+      setOtpSent(true);
     } catch (err) {
       setError(err.message || 'Email sign-in failed');
     } finally {
@@ -145,7 +133,7 @@ export default function AuthScreen({ onAuthenticated }) {
       )}
 
       {mode === 'email' && (
-        <form onSubmit={handleEmailOtp} className="auth-form">
+        <form onSubmit={handleEmailLink} className="auth-form">
           <div className="form-group">
             <label>Email address</label>
             <input
@@ -158,23 +146,12 @@ export default function AuthScreen({ onAuthenticated }) {
             />
           </div>
           {otpSent && (
-            <>
-              <p className="auth-hint">
-                Check your inbox and spam. Supabase may send a <strong>magic link</strong> (click it)
-                or a <strong>6-digit code</strong> — depends on your Supabase email template.
-              </p>
-              <div className="form-group">
-                <label>6-digit code (if your email shows a code)</label>
-                <input
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="Leave blank if you used the magic link"
-                />
-              </div>
-            </>
+            <p className="auth-hint auth-link-sent">
+              A sign in link has been sent to your inbox. Click the link in the email to continue.
+            </p>
           )}
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Please wait...' : otpSent ? 'Verify Code' : 'Send Email Link / Code'}
+          <button type="submit" className="btn btn-primary" disabled={loading || otpSent}>
+            {loading ? 'Please wait...' : otpSent ? 'Link sent' : 'Send sign-in link'}
           </button>
         </form>
       )}

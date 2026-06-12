@@ -18,6 +18,8 @@ services:
         value: llama-3.2-90b-vision-preview
       - key: DATABASE_URL
         sync: false
+      - key: SUPABASE_URL
+        sync: false
       - key: SUPABASE_JWT_SECRET
         sync: false
       - key: VITE_SUPABASE_URL
