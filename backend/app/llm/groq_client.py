@@ -23,7 +23,10 @@ VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
 
 client = None
 if GROQ_API_KEY:
-    client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+    try:
+        client = OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
+    except TypeError as exc:
+        print(f"⚠️  Failed to initialize Groq client: {exc}")
 
 
 class AIError(Exception):
