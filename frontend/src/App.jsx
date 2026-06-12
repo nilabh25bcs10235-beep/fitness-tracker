@@ -9,15 +9,16 @@ import MealLogger from './components/MealLogger';
 import Recipes from './components/Recipes';
 import AIInsights from './components/AIInsights';
 import Workouts from './components/Workouts';
-import StarfieldBackground from './components/StarfieldBackground';
+import FloatingFoodBackground from './components/FloatingFoodBackground';
 import VortexTransition from './components/VortexTransition';
+import RocketLoader from './components/RocketLoader';
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'meals', label: 'Log Meals' },
-  { id: 'workouts', label: 'Workouts' },
-  { id: 'recipes', label: 'Recipes' },
-  { id: 'ai', label: 'AI Coach' },
+  { id: 'dashboard', label: 'Dashboard', theme: 'dashboard' },
+  { id: 'meals', label: 'Log Meals', theme: 'meals' },
+  { id: 'workouts', label: 'Workouts', theme: 'workouts' },
+  { id: 'recipes', label: 'Recipes', theme: 'recipes' },
+  { id: 'ai', label: 'AI Coach', theme: 'ai' },
 ];
 
 export default function App() {
@@ -25,6 +26,8 @@ export default function App() {
   const [authReady, setAuthReady] = useState(!supabaseConfigured);
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('dashboard');
+  const [displayTab, setDisplayTab] = useState('dashboard');
+  const [rocketLoading, setRocketLoading] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [weeklyTracker, setWeeklyTracker] = useState(null);
   const [meals, setMeals] = useState([]);
@@ -35,21 +38,23 @@ export default function App() {
   const [showVortex, setShowVortex] = useState(false);
   const [appVisible, setAppVisible] = useState(false);
   const vortexTriggeredRef = useRef(false);
+  const tabTimerRef = useRef(null);
 
   const refresh = useCallback(async () => {
-    const [dash, mealList, tracker] = await Promise.all([
+    const [dash, mealList, tracker, recipePlan] = await Promise.all([
       api.getDashboard(),
       api.getMeals(),
       api.getWeeklyTracker(),
+      api.getRecipes(),
     ]);
     setDashboard(dash);
     setMeals(mealList);
     setWeeklyTracker(tracker);
+    setRecipes(recipePlan);
     setUser(dash.user);
   }, []);
 
   const triggerVortex = useCallback(() => {
-    if (vortexTriggeredRef.current) return;
     vortexTriggeredRef.current = true;
     setShowVortex(true);
     setAppVisible(false);
@@ -60,22 +65,50 @@ export default function App() {
     setAppVisible(true);
   }, []);
 
+  const switchTab = (nextTab) => {
+    if (nextTab === tab) return;
+    setTab(nextTab);
+    setRocketLoading(true);
+    if (tabTimerRef.current) clearTimeout(tabTimerRef.current);
+    tabTimerRef.current = setTimeout(() => {
+      setDisplayTab(nextTab);
+      setRocketLoading(false);
+      if (nextTab === 'recipes' && !recipes) {
+        api.getRecipes().then(setRecipes).catch(() => {});
+      }
+    }, 700);
+  };
+
   useEffect(() => {
     api.health().then((h) => setAiEnabled(h.ai_enabled)).catch(() => {});
+    return () => {
+      if (tabTimerRef.current) clearTimeout(tabTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
     if (!supabaseConfigured) return undefined;
 
+    const isAuthCallback = () => {
+      const { hash, search } = window.location;
+      return hash.includes('access_token') || search.includes('code=') || hash.includes('type=magiclink');
+    };
+
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setAuthReady(true);
-      if (data.session) setAppVisible(true);
+      if (data.session) {
+        if (isAuthCallback() && !vortexTriggeredRef.current) {
+          triggerVortex();
+          window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          setAppVisible(true);
+        }
+      }
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      if (event === 'SIGNED_IN' && nextSession) {
-        vortexTriggeredRef.current = false;
+      if (event === 'SIGNED_IN' && nextSession && !vortexTriggeredRef.current) {
         triggerVortex();
       }
       setSession(nextSession);
@@ -93,7 +126,7 @@ export default function App() {
   }, [triggerVortex]);
 
   useEffect(() => {
-    if (!session) return;
+    if (!session) return undefined;
 
     let cancelled = false;
     (async () => {
@@ -119,7 +152,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [session, refresh, triggerVortex]);
+  }, [session, refresh]);
 
   const handleOnboard = async (form) => {
     setLoading(true);
@@ -143,7 +176,7 @@ export default function App() {
 
   const handleLogout = async () => {
     if (supabaseConfigured) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'global' });
     }
     setSession(null);
     setUser(null);
@@ -151,18 +184,9 @@ export default function App() {
     setMeals([]);
     setRecipes(null);
     setTab('dashboard');
+    setDisplayTab('dashboard');
     setAppVisible(false);
     vortexTriggeredRef.current = false;
-  };
-
-  const loadRecipes = async () => {
-    setLoading(true);
-    try {
-      const r = await api.getRecipes();
-      setRecipes(r);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleLogWeight = async () => {
@@ -172,10 +196,12 @@ export default function App() {
     refresh();
   };
 
+  const activeTheme = TABS.find((t) => t.id === displayTab)?.theme || 'dashboard';
+
   if (!authReady) {
     return (
       <div className="app-root">
-        <StarfieldBackground />
+        <FloatingFoodBackground />
         <div className="app loading-screen">Loading...</div>
       </div>
     );
@@ -184,7 +210,7 @@ export default function App() {
   if (supabaseConfigured && !session) {
     return (
       <div className="app-root">
-        <StarfieldBackground />
+        <FloatingFoodBackground />
         <AuthScreen />
         <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
       </div>
@@ -194,7 +220,7 @@ export default function App() {
   if (!user) {
     return (
       <div className={`app-root ${appVisible ? 'app-visible' : ''}`}>
-        <StarfieldBackground />
+        <FloatingFoodBackground />
         <div className="app">
           <header className="app-header glass-header">
             <div className="logo">FitTrack AI</div>
@@ -214,7 +240,8 @@ export default function App() {
 
   return (
     <div className={`app-root ${appVisible ? 'app-visible' : ''}`}>
-      <StarfieldBackground />
+      <FloatingFoodBackground />
+      <RocketLoader active={rocketLoading} />
       <div className="app">
         <header className="app-header glass-header">
           <div>
@@ -240,26 +267,29 @@ export default function App() {
             <button
               key={t.id}
               type="button"
-              className={tab === t.id ? 'active' : ''}
-              onClick={() => {
-                setTab(t.id);
-                if (t.id === 'recipes' && !recipes) loadRecipes();
-              }}
+              className={`tab-${t.theme} ${tab === t.id ? 'active' : ''}`}
+              onClick={() => switchTab(t.id)}
             >
               {t.label}
             </button>
           ))}
         </nav>
 
-        {tab === 'dashboard' && (
-          <Dashboard data={dashboard} tracker={weeklyTracker} onLogWeight={handleLogWeight} />
-        )}
-        {tab === 'meals' && <MealLogger meals={meals} onRefresh={refresh} />}
-        {tab === 'workouts' && <Workouts onRefresh={refresh} />}
-        {tab === 'recipes' && (
-          <Recipes data={recipes} loading={loading} onRefresh={loadRecipes} user={user} />
-        )}
-        {tab === 'ai' && <AIInsights />}
+        <div className={`panel-box panel-${activeTheme}`}>
+          {!rocketLoading && displayTab === 'dashboard' && (
+            <Dashboard data={dashboard} tracker={weeklyTracker} onLogWeight={handleLogWeight} />
+          )}
+          {!rocketLoading && displayTab === 'meals' && (
+            <MealLogger meals={meals} onRefresh={refresh} />
+          )}
+          {!rocketLoading && displayTab === 'workouts' && (
+            <Workouts onRefresh={refresh} />
+          )}
+          {!rocketLoading && displayTab === 'recipes' && (
+            <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
+          )}
+          {!rocketLoading && displayTab === 'ai' && <AIInsights />}
+        </div>
       </div>
       <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
     </div>

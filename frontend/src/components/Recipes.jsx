@@ -1,14 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../api';
 
+function EditableMealRow({ entry, onChange, onRemove }) {
+  return (
+    <div className="plan-meal-row box-glow box-recipes">
+      <div className="plan-meal-header">
+        <span className="badge badge-meal">{entry.meal_type}</span>
+        <button type="button" className="btn-icon" onClick={() => onRemove(entry.id)}>✕</button>
+      </div>
+      <input
+        className="plan-input"
+        value={entry.name}
+        onChange={(e) => onChange(entry.id, 'name', e.target.value)}
+        placeholder="Meal name"
+      />
+      <textarea
+        className="plan-input"
+        value={entry.description}
+        onChange={(e) => onChange(entry.id, 'description', e.target.value)}
+        placeholder="Description"
+        rows={2}
+      />
+      <div className="grid-2">
+        <input
+          className="plan-input"
+          type="number"
+          value={entry.calories}
+          onChange={(e) => onChange(entry.id, 'calories', Number(e.target.value))}
+          placeholder="Calories"
+        />
+        <input
+          className="plan-input"
+          type="number"
+          value={entry.protein_g}
+          onChange={(e) => onChange(entry.id, 'protein_g', Number(e.target.value))}
+          placeholder="Protein (g)"
+        />
+      </div>
+      <input
+        className="plan-input"
+        value={entry.notes}
+        onChange={(e) => onChange(entry.id, 'notes', e.target.value)}
+        placeholder="Notes"
+      />
+    </div>
+  );
+}
+
 export default function Recipes({ data, loading, onRefresh, user }) {
-  const [step, setStep] = useState(data ? 'results' : 'form');
+  const [step, setStep] = useState('form');
   const [restrictions, setRestrictions] = useState(user?.dietary_restrictions || '');
   const [preferences, setPreferences] = useState('');
   const [goals, setGoals] = useState(user?.goal?.replace('_', ' ') || '');
   const [generating, setGenerating] = useState(false);
-  const [recipeData, setRecipeData] = useState(data);
+  const [plan, setPlan] = useState(null);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState('');
+
+  useEffect(() => {
+    if (data?.has_plan) {
+      setPlan(data);
+      setStep('results');
+    }
+  }, [data]);
 
   const handleGenerate = async () => {
     setGenerating(true);
@@ -20,7 +74,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
         goals,
         count: 4,
       });
-      setRecipeData(res);
+      setPlan(res);
       setStep('results');
       onRefresh?.();
     } catch (e) {
@@ -30,111 +84,200 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     }
   };
 
-  if (step === 'form' || (!recipeData && !loading)) {
-    return (
-      <div className="card">
-        <h2>Recipe Planner</h2>
-        <p style={{ color: 'var(--muted)' }}>
-          Tell us your restrictions, preferences, and goals — AI creates recipe variants with timing & frequency.
-        </p>
+  const patchToday = async (nextToday) => {
+    setSaving('today');
+    try {
+      const res = await api.updateTodayPlan(nextToday);
+      setPlan(res);
+    } finally {
+      setSaving('');
+    }
+  };
 
+  const patchGrocery = async (nextGrocery) => {
+    setSaving('grocery');
+    try {
+      const res = await api.updateGrocery(nextGrocery);
+      setPlan(res);
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const patchWeekly = async (nextWeekly) => {
+    setSaving('weekly');
+    try {
+      const res = await api.updateWeeklySchedule(nextWeekly);
+      setPlan(res);
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const updateTodayField = (id, field, value) => {
+    const next = (plan.today_plan || []).map((e) =>
+      e.id === id ? { ...e, [field]: value } : e
+    );
+    setPlan({ ...plan, today_plan: next });
+  };
+
+  const saveToday = () => patchToday(plan.today_plan);
+
+  const updateGroceryItem = (id, field, value) => {
+    const next = (plan.grocery_list || []).map((g) =>
+      g.id === id ? { ...g, [field]: value } : g
+    );
+    setPlan({ ...plan, grocery_list: next });
+  };
+
+  const saveGrocery = () => patchGrocery(plan.grocery_list);
+
+  const addGroceryItem = () => {
+    const next = [
+      ...(plan.grocery_list || []),
+      { id: crypto.randomUUID(), text: '', checked: false },
+    ];
+    setPlan({ ...plan, grocery_list: next });
+  };
+
+  const updateWeeklyField = (id, field, value) => {
+    const next = (plan.weekly_schedule || []).map((e) =>
+      e.id === id ? { ...e, [field]: value } : e
+    );
+    setPlan({ ...plan, weekly_schedule: next });
+  };
+
+  const saveWeekly = () => patchWeekly(plan.weekly_schedule);
+
+  if (step === 'form' && !plan?.has_plan) {
+    return (
+      <div className="card glass-card box-glow box-recipes">
+        <h2>Recipe Planner</h2>
+        <p className="muted-note">AI builds your weekly schedule and saves it to your account.</p>
         <div className="form-group">
           <label>Dietary restrictions</label>
-          <textarea
-            value={restrictions}
-            onChange={(e) => setRestrictions(e.target.value)}
-            placeholder="e.g. no dairy, gluten-free, halal"
-          />
+          <textarea value={restrictions} onChange={(e) => setRestrictions(e.target.value)} />
         </div>
         <div className="form-group">
           <label>Food preferences</label>
-          <textarea
-            value={preferences}
-            onChange={(e) => setPreferences(e.target.value)}
-            placeholder="e.g. spicy Indian food, high protein, quick meals under 30 min"
-          />
+          <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} />
         </div>
         <div className="form-group">
           <label>Your goals</label>
-          <input
-            value={goals}
-            onChange={(e) => setGoals(e.target.value)}
-            placeholder="e.g. muscle gain, fat loss, maintenance"
-          />
+          <input value={goals} onChange={(e) => setGoals(e.target.value)} />
         </div>
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleGenerate}
-          disabled={generating}
-        >
-          {generating ? 'Creating recipes...' : 'Generate My Recipes'}
+        <button type="button" className="btn btn-glow" onClick={handleGenerate} disabled={generating}>
+          {generating ? 'Creating plan...' : 'Generate My Plan'}
         </button>
         {error && <p className="error">{error}</p>}
       </div>
     );
   }
 
-  if (loading || generating) return <div className="card">Generating recipes...</div>;
-
-  const display = recipeData || data;
-  if (!display) return null;
+  if (loading || generating) return <div className="card glass-card box-recipes">Generating plan...</div>;
+  if (!plan) return null;
 
   return (
-    <div>
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2>Your Recipe Plan</h2>
+    <div className="recipes-panel">
+      <div className="card glass-card box-glow box-recipes">
+        <div className="panel-header-row">
+          <h2>Today&apos;s Diet Plan — {plan.today_name}</h2>
           <button type="button" className="btn btn-secondary" onClick={() => setStep('form')}>
-            Update preferences
+            Regenerate
           </button>
         </div>
-        {display.ai_notes && <div className="insight-box">{display.ai_notes}</div>}
-        {display.consumption_schedule?.length > 0 && (
-          <div style={{ marginTop: '1rem' }}>
-            <h4>Weekly schedule</h4>
-            <ul>
-              {display.consumption_schedule.map((item, i) => <li key={i}>{item}</li>)}
-            </ul>
-          </div>
-        )}
+        {plan.ai_notes && <div className="insight-box insight-recipes">{plan.ai_notes}</div>}
+        <div className="plan-meals-stack">
+          {(plan.today_plan || []).length === 0 && (
+            <p className="muted-note">No meals scheduled for today. Edit the weekly schedule below.</p>
+          )}
+          {(plan.today_plan || []).map((entry) => (
+            <EditableMealRow
+              key={entry.id}
+              entry={entry}
+              onChange={updateTodayField}
+              onRemove={(id) => {
+                const next = plan.today_plan.filter((e) => e.id !== id);
+                setPlan({ ...plan, today_plan: next });
+              }}
+            />
+          ))}
+        </div>
+        <button type="button" className="btn btn-glow" onClick={saveToday} disabled={saving === 'today'}>
+          {saving === 'today' ? 'Saving...' : 'Save Today\'s Plan'}
+        </button>
       </div>
 
-      {display.recipes.map((r, i) => (
-        <div key={i} className="recipe-card">
+      <div className="card glass-card box-glow box-grocery">
+        <h3>Grocery List</h3>
+        <ul className="grocery-edit-list">
+          {(plan.grocery_list || []).map((item) => (
+            <li key={item.id} className="grocery-edit-row">
+              <input
+                type="checkbox"
+                checked={item.checked}
+                onChange={(e) => updateGroceryItem(item.id, 'checked', e.target.checked)}
+              />
+              <input
+                className="plan-input"
+                value={item.text}
+                onChange={(e) => updateGroceryItem(item.id, 'text', e.target.value)}
+              />
+            </li>
+          ))}
+        </ul>
+        <div className="chip-row">
+          <button type="button" className="btn btn-secondary" onClick={addGroceryItem}>+ Add item</button>
+          <button type="button" className="btn btn-glow" onClick={saveGrocery} disabled={saving === 'grocery'}>
+            {saving === 'grocery' ? 'Saving...' : 'Save Grocery List'}
+          </button>
+        </div>
+      </div>
+
+      <div className="card glass-card box-glow box-weekly">
+        <h3>Weekly Schedule (Mon–Sun)</h3>
+        <p className="muted-note">Stored in your database — edit any day&apos;s meals.</p>
+        {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => {
+          const dayMeals = (plan.weekly_schedule || []).filter((e) => e.day === day);
+          if (!dayMeals.length) return null;
+          return (
+            <div key={day} className="weekly-day-block">
+              <h4>{day}</h4>
+              {dayMeals.map((entry) => (
+                <EditableMealRow
+                  key={entry.id}
+                  entry={entry}
+                  onChange={updateWeeklyField}
+                  onRemove={(id) => {
+                    const next = plan.weekly_schedule.filter((e) => e.id !== id);
+                    setPlan({ ...plan, weekly_schedule: next });
+                  }}
+                />
+              ))}
+            </div>
+          );
+        })}
+        <button type="button" className="btn btn-glow" onClick={saveWeekly} disabled={saving === 'weekly'}>
+          {saving === 'weekly' ? 'Saving...' : 'Save Weekly Schedule'}
+        </button>
+      </div>
+
+      {(plan.recipes || []).map((r, i) => (
+        <div key={i} className="recipe-card box-glow box-recipes">
           <h3>{r.name}</h3>
-          <p style={{ color: 'var(--muted)' }}>{r.description}</p>
+          <p className="muted-note">{r.description}</p>
           <div className="chip-row">
-            <span className="chip">{r.calories} kcal</span>
-            <span className="chip">{r.protein_g}g protein</span>
-            <span className="chip">{r.prep_time_min} min</span>
+            <span className="chip chip-fun">{r.calories} kcal</span>
+            <span className="chip chip-fun">{r.protein_g}g protein</span>
             {r.frequency && <span className="badge">{r.frequency}</span>}
-            {r.timing && <span className="badge">{r.timing}</span>}
-            {r.tags?.map((t) => <span key={t} className="badge">{t}</span>)}
           </div>
-          {r.variants?.length > 0 && (
-            <details style={{ marginTop: '0.5rem' }}>
-              <summary style={{ cursor: 'pointer' }}>Recipe variants</summary>
-              <ul>{r.variants.map((v, j) => <li key={j}>{v}</li>)}</ul>
-            </details>
-          )}
-          <details style={{ marginTop: '0.75rem' }}>
-            <summary style={{ cursor: 'pointer' }}>Ingredients & Steps</summary>
-            <strong>Ingredients:</strong>
-            <ul>{r.ingredients.map((ing, j) => <li key={j}>{ing}</li>)}</ul>
-            <strong>Instructions:</strong>
-            <ol>{r.instructions.map((s, j) => <li key={j}>{s}</li>)}</ol>
+          <details>
+            <summary>Ingredients & Steps</summary>
+            <ul>{r.ingredients?.map((ing, j) => <li key={j}>{ing}</li>)}</ul>
+            <ol>{r.instructions?.map((s, j) => <li key={j}>{s}</li>)}</ol>
           </details>
         </div>
       ))}
-
-      <div className="card">
-        <h3>Grocery List</h3>
-        <ul className="grocery-list">
-          {display.grocery_list.map((item, i) => <li key={i}>{item}</li>)}
-        </ul>
-      </div>
     </div>
   );
 }

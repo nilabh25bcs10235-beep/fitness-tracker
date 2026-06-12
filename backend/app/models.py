@@ -28,6 +28,7 @@ class User(Base):
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
     weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
     workouts = relationship("WorkoutLog", back_populates="user", cascade="all, delete-orphan")
+    meal_plan = relationship("UserMealPlan", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
 
 class Meal(Base):
@@ -80,3 +81,18 @@ class WorkoutLog(Base):
     log_date = Column(Date, default=date.today)
 
     user = relationship("User", back_populates="workouts")
+
+
+class UserMealPlan(Base):
+    __tablename__ = "user_meal_plans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    recipes_json = Column(Text, default="[]")
+    weekly_schedule_json = Column(Text, default="[]")
+    grocery_list_json = Column(Text, default="[]")
+    today_plan_json = Column(Text, default="[]")
+    ai_notes = Column(Text, default="")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="meal_plan")

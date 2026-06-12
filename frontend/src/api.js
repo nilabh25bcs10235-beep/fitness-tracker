@@ -103,10 +103,31 @@ export const api = {
   getRecipes: () => request('/api/recipes/me'),
 
   generateRecipes: (preferences) =>
-    request('/api/recipes/me', {
+    request('/api/recipes/me/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(preferences),
+    }),
+
+  updateWeeklySchedule: (weekly_schedule) =>
+    request('/api/recipes/me/weekly-schedule', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ weekly_schedule }),
+    }),
+
+  updateTodayPlan: (today_plan) =>
+    request('/api/recipes/me/today-plan', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ today_plan }),
+    }),
+
+  updateGrocery: (grocery_list) =>
+    request('/api/recipes/me/grocery', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ grocery_list }),
     }),
 
   getInsight: (query) =>

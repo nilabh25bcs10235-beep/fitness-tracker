@@ -12,7 +12,7 @@ export default function VortexTransition({ active, onComplete }) {
     if (!canvas) return undefined;
 
     const ctx = canvas.getContext('2d');
-    const DURATION = 2800;
+    const DURATION = 2000;
 
     const resize = () => {
       canvas.width = window.innerWidth;

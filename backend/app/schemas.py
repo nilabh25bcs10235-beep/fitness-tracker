@@ -199,11 +199,45 @@ class RecipePreferences(BaseModel):
     count: int = 4
 
 
+class GroceryItem(BaseModel):
+    id: str
+    text: str
+    checked: bool = False
+
+
+class ScheduleEntry(BaseModel):
+    id: str
+    day: str
+    meal_type: str
+    name: str
+    description: str = ""
+    calories: int = 0
+    protein_g: int = 0
+    notes: str = ""
+
+
+class MealPlanUpdateWeekly(BaseModel):
+    weekly_schedule: List[ScheduleEntry]
+
+
+class MealPlanUpdateToday(BaseModel):
+    today_plan: List[ScheduleEntry]
+
+
+class MealPlanUpdateGrocery(BaseModel):
+    grocery_list: List[GroceryItem]
+
+
 class RecipeResponse(BaseModel):
     recipes: List[RecipeItem]
-    grocery_list: List[str]
+    grocery_list: List[GroceryItem] = []
     ai_notes: str
     consumption_schedule: List[str] = []
+    weekly_schedule: List[ScheduleEntry] = []
+    today_plan: List[ScheduleEntry] = []
+    today_name: str = ""
+    updated_at: Optional[str] = None
+    has_plan: bool = False
 
 
 class BodyImageAnalysis(BaseModel):
