@@ -19,12 +19,17 @@ if os.getenv("GROQ_API_KEY"):
 else:
     print("⚠️  WARNING: GROQ_API_KEY is NOT set in the environment!")
 
+_default_origins = "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
+_allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", _default_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv(
-        "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
-    ).split(","),
+    allow_origins=_allowed_origins,
+    allow_origin_regex=r"https://.*\.onrender\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

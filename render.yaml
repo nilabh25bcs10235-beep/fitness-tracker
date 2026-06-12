@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: fitness-tracker-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_TEXT_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_VISION_MODEL
+        value: llama-3.2-90b-vision-preview
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: fitness-tracker
+          envVarKey: RENDER_EXTERNAL_URL
+
+  - type: web
+    name: fitness-tracker
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: fitness-tracker-api
+          envVarKey: RENDER_EXTERNAL_URL
