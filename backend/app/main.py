@@ -50,3 +50,8 @@ app.include_router(ai.router)
 def health():
     from .llm.groq_client import _ai_available
     return {"status": "ok", "ai_enabled": _ai_available()}
+
+
+static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
+if os.path.isdir(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="frontend")

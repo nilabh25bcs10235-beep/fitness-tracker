@@ -1,4 +1,5 @@
 backend/fitness.db
+backend/static/
 backend/uploads/
 backend/.env
 frontend/node_modules/
