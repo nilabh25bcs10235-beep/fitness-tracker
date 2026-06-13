@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
+import ReactiveField from './reactive/ReactiveField';
 
 const QUICK_PROMPTS = [
   'What should I eat for dinner to hit my protein goal?',
@@ -185,7 +186,7 @@ export default function AIInsights() {
 
   return (
     <div>
-      <div className="card ai-greeting-card">
+      <div className="card ai-greeting-card card-lively">
         <div className="coach-header">
           <div>
             <h2>AI Coach</h2>
@@ -251,7 +252,7 @@ export default function AIInsights() {
         </div>
       )}
 
-      <div className="card coach-chat-card">
+      <div className="card coach-chat-card card-lively">
         <div className="coach-chat-title">
           <span>{activeTitle}</span>
           <span className="ai-status on">✓ AI Coach Online</span>
@@ -299,7 +300,9 @@ export default function AIInsights() {
         </div>
 
         <div className="coach-input-row">
-          <textarea
+          <ReactiveField
+            theme="chat"
+            as="textarea"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -319,7 +322,7 @@ export default function AIInsights() {
         {error && <p className="error">{error}</p>}
       </div>
 
-      <div className="card">
+      <div className="card card-lively">
         <h3>Body Scan — BMI & Nutrition Advice</h3>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Upload a full-body photo. AI estimates BMI, body composition, and gives goal-specific nutrition advice.

@@ -65,7 +65,7 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
       </div>
 
       <div className="grid-2">
-        <div className="card glass-card">
+        <div className="card glass-card card-lively">
           <h3>{viewDay?.is_today ? "Today's Macros" : `${viewDay?.day_name} Macros`}</h3>
           <div className="macro-stack">
             <MacroProgress
@@ -83,7 +83,7 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
           </div>
         </div>
 
-        <div className="card glass-card">
+        <div className="card glass-card card-lively">
           <h3>Body Composition {body_composition.source === 'groq' ? '(AI Est.)' : ''}</h3>
           <div className="grid-2">
             <div className="stat-card glass-stat">
@@ -123,8 +123,8 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
               <XAxis dataKey="day" {...CHART_AXIS} />
               <YAxis {...CHART_AXIS} />
               <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(99,102,241,0.08)', radius: 8 }} />
-              <Bar dataKey="calories" name="Calories" fill="url(#calGrad)" radius={[8, 8, 2, 2]} activeBar={{ fill: '#38bdf8', opacity: 0.9 }} />
-              <Bar dataKey="target" name="Target" fill="url(#targetGrad)" radius={[8, 8, 2, 2]} activeBar={{ fill: 'rgba(167,139,250,0.5)' }} />
+              <Bar dataKey="calories" name="Calories" fill="url(#calGrad)" radius={[8, 8, 2, 2]} animationDuration={900} animationBegin={0} activeBar={{ fill: '#38bdf8', opacity: 0.9 }} />
+              <Bar dataKey="target" name="Target" fill="url(#targetGrad)" radius={[8, 8, 2, 2]} animationDuration={900} animationBegin={120} activeBar={{ fill: 'rgba(167,139,250,0.5)' }} />
               <Legend wrapperStyle={{ color: 'var(--muted)', fontSize: 12, paddingTop: 8 }} />
             </BarChart>
           </ResponsiveContainer>
@@ -150,6 +150,8 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
                 name="Protein"
                 stroke="url(#proteinLine)"
                 strokeWidth={3}
+                animationDuration={1000}
+                animationBegin={0}
                 dot={{ r: 4, fill: '#22d3ee', stroke: '#0f172a', strokeWidth: 2 }}
                 activeDot={{ r: 6, fill: '#a855f7', stroke: '#fff', strokeWidth: 2 }}
               />
@@ -160,6 +162,8 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
                 stroke="rgba(167,139,250,0.45)"
                 strokeDasharray="6 6"
                 strokeWidth={2}
+                animationDuration={1000}
+                animationBegin={150}
                 dot={false}
               />
               <Legend wrapperStyle={{ color: 'var(--muted)', fontSize: 12, paddingTop: 8 }} />
@@ -182,6 +186,8 @@ export default function Dashboard({ data, tracker, hydration, onLogWeight, onHyd
               name="Weight (kg)"
               stroke="#fbbf24"
               strokeWidth={3}
+              animationDuration={1100}
+              animationBegin={0}
               dot={{ r: 4, fill: '#fbbf24', stroke: '#0f172a', strokeWidth: 2 }}
               activeDot={{ r: 6, fill: '#fde68a', stroke: '#fff', strokeWidth: 2 }}
             />

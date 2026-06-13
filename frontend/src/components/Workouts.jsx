@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
+import ReactiveField from './reactive/ReactiveField';
+import CelebrateBurst from './reactive/CelebrateBurst';
 
 const BODY_PARTS = [
   'back', 'chest', 'shoulders', 'biceps', 'triceps',
@@ -17,6 +19,8 @@ export default function Workouts({ onRefresh }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [savedMsg, setSavedMsg] = useState('');
+  const [celebrate, setCelebrate] = useState(false);
+  const [celebrateTheme, setCelebrateTheme] = useState('fire');
 
   const loadExercises = async () => {
     const target = customPart.trim() || bodyPart;
@@ -54,31 +58,29 @@ export default function Workouts({ onRefresh }) {
 
   return (
     <div>
-      <div className="card">
+      <div className="card card-lively">
         <h2>Calorie Burn Tracker</h2>
         <p style={{ color: 'var(--muted)' }}>
           Log an activity and get an AI estimate of calories burned.
         </p>
         <form onSubmit={estimateBurn}>
           <div className="grid-2">
-            <div className="form-group">
-              <label>Activity</label>
-              <input
-                value={activity}
-                onChange={(e) => setActivity(e.target.value)}
-                placeholder="e.g. running, cycling, swimming"
-              />
-            </div>
-            <div className="form-group">
-              <label>Duration (minutes)</label>
-              <input
-                type="number"
-                min={5}
-                max={300}
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-              />
-            </div>
+            <ReactiveField
+              theme="fire"
+              label="Activity"
+              value={activity}
+              onChange={(e) => setActivity(e.target.value)}
+              placeholder="e.g. running, cycling, swimming"
+            />
+            <ReactiveField
+              theme="fire"
+              label="Duration (minutes)"
+              type="number"
+              min={5}
+              max={300}
+              value={duration}
+              onChange={(e) => setDuration(Number(e.target.value))}
+            />
           </div>
           <div className="form-group">
             <label>Intensity</label>
@@ -122,6 +124,8 @@ export default function Workouts({ onRefresh }) {
                     intensity,
                   });
                   setSavedMsg('Workout saved to today\'s tracker!');
+                  setCelebrateTheme('fire');
+                  setCelebrate(true);
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);
@@ -134,10 +138,9 @@ export default function Workouts({ onRefresh }) {
             </button>
           </div>
         )}
-        {savedMsg && <p className="saved-msg">{savedMsg}</p>}
       </div>
 
-      <div className="card">
+      <div className="card card-lively">
         <h2>Exercise Planner</h2>
         <p style={{ color: 'var(--muted)' }}>
           Pick a body part — get machine, free-weight, and cardio exercises with sets & reps.
@@ -156,14 +159,13 @@ export default function Workouts({ onRefresh }) {
           ))}
         </div>
 
-        <div className="form-group">
-          <label>Or type a target (e.g. lats, hamstrings)</label>
-          <input
-            value={customPart}
-            onChange={(e) => setCustomPart(e.target.value)}
-            placeholder="custom body part"
-          />
-        </div>
+        <ReactiveField
+          theme="workout"
+          label="Or type a target (e.g. lats, hamstrings)"
+          value={customPart}
+          onChange={(e) => setCustomPart(e.target.value)}
+          placeholder="custom body part"
+        />
 
         <button type="button" className="btn btn-primary" onClick={loadExercises} disabled={loading}>
           {loading ? 'Building plan...' : 'Get Exercises'}
@@ -217,6 +219,8 @@ export default function Workouts({ onRefresh }) {
                     notes: plan.exercises.map((e) => e.name).join(', '),
                   });
                   setSavedMsg(`${plan.body_part} workout saved to today's tracker!`);
+                  setCelebrateTheme('workout');
+                  setCelebrate(true);
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);
@@ -232,6 +236,13 @@ export default function Workouts({ onRefresh }) {
       </div>
 
       {error && <p className="error">{error}</p>}
+
+      <CelebrateBurst
+        active={celebrate}
+        theme={celebrateTheme}
+        message={savedMsg}
+        onDone={() => { setCelebrate(false); setSavedMsg(''); }}
+      />
     </div>
   );
 }

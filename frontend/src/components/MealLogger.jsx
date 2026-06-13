@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
 import { HEALTH_LABELS, healthScoreClass } from '../lib/healthScore';
+import ReactiveField from './reactive/ReactiveField';
+import CelebrateBurst from './reactive/CelebrateBurst';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -64,6 +66,7 @@ export default function MealLogger({ meals, onRefresh }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState('');
   const [lastHealthScore, setLastHealthScore] = useState(null);
+  const [celebrate, setCelebrate] = useState(false);
   const suggestRef = useRef(null);
   const analyzeRef = useRef(null);
   const analyzeAbortRef = useRef(null);
@@ -174,6 +177,7 @@ export default function MealLogger({ meals, onRefresh }) {
         ai_analysis: microPayload,
       });
       setLastHealthScore(saved.health_score);
+      setCelebrate(true);
       setDescription('');
       setAnalysis(null);
       setSuggestions([]);
@@ -203,7 +207,7 @@ export default function MealLogger({ meals, onRefresh }) {
 
   return (
     <div>
-      <div className="card">
+      <div className="card card-lively">
         <h2>Log a Meal</h2>
         <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           Type or upload a meal — AI auto-detects calories, macros, and micronutrients.
@@ -218,18 +222,19 @@ export default function MealLogger({ meals, onRefresh }) {
           </select>
         </div>
 
-        <div className="form-group food-input-wrap">
-          <label>What did you eat?</label>
-          <input
-            ref={inputRef}
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-            placeholder="e.g. tandoori chicken"
-            autoComplete="off"
-          />
+        <ReactiveField
+          theme="food"
+          label="What did you eat?"
+          wrapClassName="food-input-wrap"
+          inputRef={inputRef}
+          type="text"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          placeholder="e.g. tandoori chicken"
+          autoComplete="off"
+        >
           {showSuggestions && suggestions.length > 0 && (
             <ul className="food-suggestions">
               {suggestions.map((s) => (
@@ -241,7 +246,7 @@ export default function MealLogger({ meals, onRefresh }) {
               ))}
             </ul>
           )}
-        </div>
+        </ReactiveField>
 
         {analyzing && <p className="analyzing-hint">Analyzing nutrition...</p>}
 
@@ -268,6 +273,13 @@ export default function MealLogger({ meals, onRefresh }) {
           </label>
         </div>
 
+        <CelebrateBurst
+          active={celebrate}
+          theme="food"
+          message="Meal logged!"
+          onDone={() => setCelebrate(false)}
+        />
+
         {lastHealthScore && (
           <div className={`health-score-banner ${healthScoreClass(lastHealthScore)}`}>
             Health score: <strong>{HEALTH_LABELS[lastHealthScore] || lastHealthScore}</strong>
@@ -277,7 +289,7 @@ export default function MealLogger({ meals, onRefresh }) {
         {error && <p className="error">{error}</p>}
       </div>
 
-      <div className="card">
+      <div className="card card-lively">
         <h3>Today's Meals ({meals.length})</h3>
         <ul className="meal-list">
           {meals.map((m) => (

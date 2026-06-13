@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api';
+import ReactiveField from './reactive/ReactiveField';
+import CelebrateBurst from './reactive/CelebrateBurst';
 
 function EditableMealRow({ entry, onChange, onRemove }) {
   return (
@@ -8,37 +10,48 @@ function EditableMealRow({ entry, onChange, onRemove }) {
         <span className="badge badge-meal">{entry.meal_type}</span>
         <button type="button" className="btn-icon" onClick={() => onRemove(entry.id)}>✕</button>
       </div>
-      <input
-        className="plan-input"
+      <ReactiveField
+        theme="recipe"
+        className="plan-input-shell"
+        wrapClassName="plan-input-shell"
         value={entry.name}
         onChange={(e) => onChange(entry.id, 'name', e.target.value)}
         placeholder="Meal name"
       />
-      <textarea
-        className="plan-input"
+      <ReactiveField
+        theme="recipe"
+        as="textarea"
+        className="plan-input-shell"
+        wrapClassName="plan-input-shell"
         value={entry.description}
         onChange={(e) => onChange(entry.id, 'description', e.target.value)}
         placeholder="Description"
         rows={2}
       />
       <div className="grid-2">
-        <input
-          className="plan-input"
+        <ReactiveField
+          theme="recipe"
+          className="plan-input-shell"
+          wrapClassName="plan-input-shell"
           type="number"
           value={entry.calories}
           onChange={(e) => onChange(entry.id, 'calories', Number(e.target.value))}
           placeholder="Calories"
         />
-        <input
-          className="plan-input"
+        <ReactiveField
+          theme="recipe"
+          className="plan-input-shell"
+          wrapClassName="plan-input-shell"
           type="number"
           value={entry.protein_g}
           onChange={(e) => onChange(entry.id, 'protein_g', Number(e.target.value))}
           placeholder="Protein (g)"
         />
       </div>
-      <input
-        className="plan-input"
+      <ReactiveField
+        theme="recipe"
+        className="plan-input-shell"
+        wrapClassName="plan-input-shell"
         value={entry.notes}
         onChange={(e) => onChange(entry.id, 'notes', e.target.value)}
         placeholder="Notes"
@@ -56,6 +69,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
   const [plan, setPlan] = useState(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState('');
+  const [celebrate, setCelebrate] = useState(false);
+  const [celebrateMsg, setCelebrateMsg] = useState('');
 
   useEffect(() => {
     if (data?.has_plan) {
@@ -76,6 +91,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       });
       setPlan(res);
       setStep('results');
+      setCelebrateMsg('Your meal plan is ready!');
+      setCelebrate(true);
       onRefresh?.();
     } catch (e) {
       setError(e.message);
@@ -89,6 +106,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     try {
       const res = await api.updateTodayPlan(nextToday);
       setPlan(res);
+      setCelebrateMsg("Today's plan saved!");
+      setCelebrate(true);
     } finally {
       setSaving('');
     }
@@ -99,6 +118,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     try {
       const res = await api.updateGrocery(nextGrocery);
       setPlan(res);
+      setCelebrateMsg('Grocery list saved!');
+      setCelebrate(true);
     } finally {
       setSaving('');
     }
@@ -109,6 +130,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     try {
       const res = await api.updateWeeklySchedule(nextWeekly);
       setPlan(res);
+      setCelebrateMsg('Weekly schedule saved!');
+      setCelebrate(true);
     } finally {
       setSaving('');
     }
@@ -151,24 +174,38 @@ export default function Recipes({ data, loading, onRefresh, user }) {
 
   if (step === 'form' && !plan?.has_plan) {
     return (
-      <div className="card glass-card box-glow box-recipes">
+      <div className="card glass-card box-glow box-recipes card-lively">
         <h2>Recipe Planner</h2>
         <p className="muted-note">AI builds your weekly schedule and saves it to your account.</p>
-        <div className="form-group">
-          <label>Dietary restrictions</label>
-          <textarea value={restrictions} onChange={(e) => setRestrictions(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Food preferences</label>
-          <textarea value={preferences} onChange={(e) => setPreferences(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label>Your goals</label>
-          <input value={goals} onChange={(e) => setGoals(e.target.value)} />
-        </div>
+        <ReactiveField
+          theme="recipe"
+          as="textarea"
+          label="Dietary restrictions"
+          value={restrictions}
+          onChange={(e) => setRestrictions(e.target.value)}
+        />
+        <ReactiveField
+          theme="recipe"
+          as="textarea"
+          label="Food preferences"
+          value={preferences}
+          onChange={(e) => setPreferences(e.target.value)}
+        />
+        <ReactiveField
+          theme="recipe"
+          label="Your goals"
+          value={goals}
+          onChange={(e) => setGoals(e.target.value)}
+        />
         <button type="button" className="btn btn-glow" onClick={handleGenerate} disabled={generating}>
           {generating ? 'Creating plan...' : 'Generate My Plan'}
         </button>
+        <CelebrateBurst
+          active={celebrate}
+          theme="recipe"
+          message={celebrateMsg}
+          onDone={() => { setCelebrate(false); setCelebrateMsg(''); }}
+        />
         {error && <p className="error">{error}</p>}
       </div>
     );
@@ -179,7 +216,13 @@ export default function Recipes({ data, loading, onRefresh, user }) {
 
   return (
     <div className="recipes-panel">
-      <div className="card glass-card box-glow box-recipes">
+      <CelebrateBurst
+        active={celebrate}
+        theme="recipe"
+        message={celebrateMsg}
+        onDone={() => { setCelebrate(false); setCelebrateMsg(''); }}
+      />
+      <div className="card glass-card box-glow box-recipes card-lively">
         <div className="panel-header-row">
           <h2>Today&apos;s Diet Plan — {plan.today_name}</h2>
           <button type="button" className="btn btn-secondary" onClick={() => setStep('form')}>
@@ -218,8 +261,10 @@ export default function Recipes({ data, loading, onRefresh, user }) {
                 checked={item.checked}
                 onChange={(e) => updateGroceryItem(item.id, 'checked', e.target.checked)}
               />
-              <input
-                className="plan-input"
+              <ReactiveField
+                theme="recipe"
+                className="plan-input-shell"
+                wrapClassName="plan-input-shell"
                 value={item.text}
                 onChange={(e) => updateGroceryItem(item.id, 'text', e.target.value)}
               />
