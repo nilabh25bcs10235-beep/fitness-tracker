@@ -1,5 +1,55 @@
 """Static exercise templates — avoids Groq calls for common body parts."""
 
+# Curated form-demo videos (exercise name → 11-char YouTube ID).
+FORM_VIDEO_IDS: dict[str, str] = {
+    "lat pulldown": "CAwf7n6Luuc",
+    "barbell row": "pa75tF6wN9k",
+    "seated cable row": "GZbfZg4YUA0",
+    "pull-ups": "eGo4IYlbE5g",
+    "bench press": "rT7DgCr-WPk",
+    "incline dumbbell press": "8iPEnn-ltC8",
+    "cable fly": "Iwe6AmxVf7o",
+    "push-ups": "IODxDxX7ni4",
+    "barbell squat": "UY9mO2Kl14k",
+    "romanian deadlift": "JCXUYuyw56M",
+    "leg press": "IBt4VPOKoNk",
+    "walking lunges": "D7KaRcUTQeE",
+    "overhead press": "qEwKCR5JCog",
+    "lateral raises": "3VcKaXpzqRo",
+    "face pulls": "repanTgJFTg",
+    "hanging leg raises": "hdng3vXDj0Y",
+    "cable crunch": "ToJeyhydUxI",
+    "pallof press": "AHwFAUYXnZ4",
+    "plank": "ASdvN_XEl_c",
+    "treadmill intervals": "wCVSv7UxB2E",
+    "rowing machine": "zQ82ClWtW5s",
+    "assault bike": "wCVSv7UxB2E",
+    "barbell curl": "kwG2ipFRgfo",
+    "hammer curls": "zC5KzA3S5k0",
+    "incline dumbbell curl": "soxrZlIl35U",
+    "tricep pushdown": "2-LAMcpzODc",
+    "skull crushers": "d_KZxkY_0cM",
+    "overhead extension": "YbX7Wd8jQ-Q",
+    "hip thrust": "SEdqd1n0cvg",
+    "bulgarian split squat": "2C-uNgKwPLE",
+    "cable kickback": "f2kXhVl4XU8",
+    "deadlift": "op9kVnSso6Q",
+    "squat": "UY9mO2Kl14k",
+}
+
+
+def _attach_form_videos(exercises: list[dict]) -> list[dict]:
+    enriched = []
+    for ex in exercises:
+        row = dict(ex)
+        if not row.get("youtube_video_id"):
+            vid = FORM_VIDEO_IDS.get(row.get("name", "").strip().lower())
+            if vid:
+                row["youtube_video_id"] = vid
+        enriched.append(row)
+    return enriched
+
+
 TEMPLATES: dict[str, dict] = {
     "back": {
         "body_part": "back",
@@ -111,9 +161,14 @@ TEMPLATES: dict[str, dict] = {
 
 def get_template(body_part: str) -> dict | None:
     key = body_part.strip().lower()
+    plan = None
     if key in TEMPLATES:
-        return TEMPLATES[key]
-    for name, plan in TEMPLATES.items():
-        if name in key or key in name:
-            return {**plan, "body_part": body_part.strip().title()}
-    return None
+        plan = TEMPLATES[key]
+    else:
+        for name, template in TEMPLATES.items():
+            if name in key or key in name:
+                plan = {**template, "body_part": body_part.strip().title()}
+                break
+    if not plan:
+        return None
+    return {**plan, "exercises": _attach_form_videos(plan["exercises"])}

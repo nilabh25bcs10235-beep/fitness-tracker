@@ -1,6 +1,8 @@
 from datetime import datetime, date
 from typing import Optional, List, Dict
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.utils.youtube import normalize_youtube_video_id
 
 
 class UserCreate(BaseModel):
@@ -231,6 +233,12 @@ class RecipeItem(BaseModel):
     frequency: str = ""
     timing: str = ""
     variants: List[str] = []
+    youtube_video_id: Optional[str] = None
+
+    @field_validator("youtube_video_id", mode="before")
+    @classmethod
+    def _normalize_recipe_video(cls, value):
+        return normalize_youtube_video_id(value)
 
 
 class RecipePreferences(BaseModel):
@@ -300,6 +308,12 @@ class ExerciseItem(BaseModel):
     reps: str
     calories_burned_est: int
     notes: str
+    youtube_video_id: Optional[str] = None
+
+    @field_validator("youtube_video_id", mode="before")
+    @classmethod
+    def _normalize_exercise_video(cls, value):
+        return normalize_youtube_video_id(value)
 
 
 class ExercisePlanResponse(BaseModel):

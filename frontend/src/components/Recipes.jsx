@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import YouTubeThumbnail from './YouTubeThumbnail';
+import YouTubeVideoModal from './YouTubeVideoModal';
 import { useVitality } from '../context/VitalityContext';
 
 function EditableMealRow({ entry, onChange, onRemove }) {
@@ -72,6 +74,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
   const [saving, setSaving] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateMsg, setCelebrateMsg] = useState('');
+  const [videoModal, setVideoModal] = useState(null);
   const { signalSuccessFromElement } = useVitality();
 
   useEffect(() => {
@@ -314,21 +317,39 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       </div>
 
       {(plan.recipes || []).map((r, i) => (
-        <div key={i} className="recipe-card box-glow box-recipes">
-          <h3>{r.name}</h3>
-          <p className="muted-note">{r.description}</p>
-          <div className="chip-row">
-            <span className="chip chip-fun">{r.calories} kcal</span>
-            <span className="chip chip-fun">{r.protein_g}g protein</span>
-            {r.frequency && <span className="badge">{r.frequency}</span>}
+        <div key={i} className="recipe-card box-glow box-recipes recipe-card-with-video">
+          <div className="recipe-card-main">
+            <h3>{r.name}</h3>
+            <p className="muted-note">{r.description}</p>
+            <div className="chip-row">
+              <span className="chip chip-fun">{r.calories} kcal</span>
+              <span className="chip chip-fun">{r.protein_g}g protein</span>
+              {r.frequency && <span className="badge">{r.frequency}</span>}
+            </div>
+            <details>
+              <summary>Ingredients & Steps</summary>
+              <ul>{r.ingredients?.map((ing, j) => <li key={j}>{ing}</li>)}</ul>
+              <ol>{r.instructions?.map((s, j) => <li key={j}>{s}</li>)}</ol>
+            </details>
           </div>
-          <details>
-            <summary>Ingredients & Steps</summary>
-            <ul>{r.ingredients?.map((ing, j) => <li key={j}>{ing}</li>)}</ul>
-            <ol>{r.instructions?.map((s, j) => <li key={j}>{s}</li>)}</ol>
-          </details>
+          {r.youtube_video_id && (
+            <YouTubeThumbnail
+              videoId={r.youtube_video_id}
+              title={r.name}
+              className="youtube-thumb-recipe"
+              onClick={(id, title) => setVideoModal({ id, title })}
+            />
+          )}
         </div>
       ))}
+
+      {videoModal && (
+        <YouTubeVideoModal
+          videoId={videoModal.id}
+          title={videoModal.title}
+          onClose={() => setVideoModal(null)}
+        />
+      )}
     </div>
   );
 }

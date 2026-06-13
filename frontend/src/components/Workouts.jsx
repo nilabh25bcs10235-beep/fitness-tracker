@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { api } from '../api';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import YouTubeThumbnail from './YouTubeThumbnail';
+import YouTubeVideoModal from './YouTubeVideoModal';
 import { useVitality } from '../context/VitalityContext';
 
 const BODY_PARTS = [
@@ -22,6 +24,7 @@ export default function Workouts({ onRefresh }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateTheme, setCelebrateTheme] = useState('fire');
+  const [videoModal, setVideoModal] = useState(null);
   const { signalSuccessFromElement } = useVitality();
 
   const loadExercises = async () => {
@@ -178,16 +181,25 @@ export default function Workouts({ onRefresh }) {
           <div style={{ marginTop: '1.5rem' }}>
             <h3>Training: {plan.body_part}</h3>
             {plan.exercises.map((ex, i) => (
-              <div key={i} className="exercise-card">
-                <div className="exercise-header">
-                  <strong>{ex.name}</strong>
-                  <span className="badge">{ex.equipment}</span>
-                  <span className="badge">{ex.type}</span>
+              <div key={i} className="exercise-card exercise-card-with-video">
+                <div className="exercise-card-main">
+                  <div className="exercise-header">
+                    <strong>{ex.name}</strong>
+                    <span className="badge">{ex.equipment}</span>
+                    <span className="badge">{ex.type}</span>
+                  </div>
+                  <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '0.35rem 0' }}>
+                    {ex.body_part} · {ex.sets} sets × {ex.reps} · ~{ex.calories_burned_est} kcal
+                  </p>
+                  <p style={{ fontSize: '0.85rem' }}>{ex.notes}</p>
                 </div>
-                <p style={{ color: 'var(--muted)', fontSize: '0.85rem', margin: '0.35rem 0' }}>
-                  {ex.body_part} · {ex.sets} sets × {ex.reps} · ~{ex.calories_burned_est} kcal
-                </p>
-                <p style={{ fontSize: '0.85rem' }}>{ex.notes}</p>
+                {ex.youtube_video_id && (
+                  <YouTubeThumbnail
+                    videoId={ex.youtube_video_id}
+                    title={ex.name}
+                    onClick={(id, title) => setVideoModal({ id, title })}
+                  />
+                )}
               </div>
             ))}
             {plan.cardio_options?.length > 0 && (
@@ -247,6 +259,14 @@ export default function Workouts({ onRefresh }) {
         message={savedMsg}
         onDone={() => { setCelebrate(false); setSavedMsg(''); }}
       />
+
+      {videoModal && (
+        <YouTubeVideoModal
+          videoId={videoModal.id}
+          title={videoModal.title}
+          onClose={() => setVideoModal(null)}
+        />
+      )}
     </div>
   );
 }

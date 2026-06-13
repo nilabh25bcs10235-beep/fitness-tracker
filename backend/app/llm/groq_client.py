@@ -327,7 +327,8 @@ Return ONLY valid JSON:
       "tags": ["tag"],
       "frequency": "e.g. 3x per week",
       "timing": "e.g. post-workout lunch",
-      "variants": ["variant 1", "variant 2"]
+      "variants": ["variant 1", "variant 2"],
+      "youtube_video_id": "11-char YouTube ID for a reputable cooking/form demo video, or null"
     }
   ],
   "grocery_list": ["consolidated items"],
@@ -337,7 +338,9 @@ Return ONLY valid JSON:
     user = (
         f"Goal: {goal}\nRestrictions: {dietary_restrictions or 'none'}\n"
         f"Preferences: {preferences or 'no specific preferences'}\n"
-        f"Daily calorie target: {calorie_target}\nGenerate {count} unique recipes with variants."
+        f"Daily calorie target: {calorie_target}\n"
+        f"Generate {count} unique recipes with variants. "
+        "For each recipe, include a real YouTube video ID (not a URL) for a relevant cooking or prep tutorial."
     )
     return _chat_json(system, user)
 
@@ -380,13 +383,17 @@ Return ONLY valid JSON:
       "sets": number,
       "reps": "e.g. 8-12 or 30 sec",
       "calories_burned_est": number,
-      "notes": "form tip"
+      "notes": "form tip",
+      "youtube_video_id": "11-char YouTube ID for a reputable form-demo video, or null"
     }
   ],
   "cardio_options": ["cardio exercise 1", "cardio exercise 2"],
   "tips": ["recovery tip", "progression tip"]
 }"""
-    user = f"Train: {body_part}\nUser: {json.dumps(user_context)}"
+    user = (
+        f"Train: {body_part}\nUser: {json.dumps(user_context)}\n"
+        "Include a real YouTube video ID (not a URL) per exercise for proper form demonstration."
+    )
     return _chat_json(system, user)
 
 
