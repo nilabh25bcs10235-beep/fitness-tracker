@@ -3,6 +3,7 @@ import { api } from '../api';
 import { HEALTH_LABELS, healthScoreClass } from '../lib/healthScore';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import { useVitality } from '../context/VitalityContext';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
 
@@ -72,6 +73,7 @@ export default function MealLogger({ meals, onRefresh }) {
   const analyzeAbortRef = useRef(null);
   const lastAnalyzedRef = useRef('');
   const inputRef = useRef(null);
+  const { signalSuccess } = useVitality();
 
   const runAnalysis = async (text) => {
     const trimmed = text.trim();
@@ -178,6 +180,7 @@ export default function MealLogger({ meals, onRefresh }) {
       });
       setLastHealthScore(saved.health_score);
       setCelebrate(true);
+      signalSuccess('meals');
       setDescription('');
       setAnalysis(null);
       setSuggestions([]);

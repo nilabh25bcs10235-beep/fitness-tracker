@@ -1,6 +1,6 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { useTypingIntensity } from '../../hooks/useTypingIntensity';
-import ReactiveFieldCanvas from './ReactiveFieldCanvas';
+import { useVitality } from '../../context/VitalityContext';
 
 export default function ReactiveField({
   theme = 'chat',
@@ -17,16 +17,28 @@ export default function ReactiveField({
   ...rest
 }) {
   const id = useId();
+  const shellRef = useRef(null);
   const { focused, intensity, onFocus, onBlur } = useTypingIntensity(value);
+  const { signalFocus, signalBlur, signalTyping, signalPulse } = useVitality();
 
   const handleFocus = (e) => {
     onFocus();
+    signalFocus(e.currentTarget.getBoundingClientRect());
     onFocusProp?.(e);
   };
 
   const handleBlur = (e) => {
     onBlur();
+    signalBlur();
     onBlurProp?.(e);
+  };
+
+  const handleChange = (e) => {
+    onChange?.(e);
+    signalTyping(e.target.value, theme);
+    if (shellRef.current) {
+      signalPulse(shellRef.current.getBoundingClientRect(), 0.35 + intensity * 0.45);
+    }
   };
 
   const InputTag = as === 'textarea' ? 'textarea' : 'input';
@@ -36,10 +48,10 @@ export default function ReactiveField({
     <div className={`reactive-field ${wrapClassName}`.trim()}>
       {label && <label htmlFor={id}>{label}</label>}
       <div
+        ref={shellRef}
         className={`reactive-shell theme-${theme} ${focused ? 'is-focused' : ''} ${intensity > 0.1 ? 'is-typing' : ''} ${className}`.trim()}
         style={{ '--field-energy': energy }}
       >
-        <ReactiveFieldCanvas theme={theme} focused={focused} intensity={intensity} />
         <div className="reactive-heartbeat" aria-hidden="true" />
         <div className="reactive-glass-shine" aria-hidden="true" />
         <InputTag
@@ -47,7 +59,7 @@ export default function ReactiveField({
           ref={inputRef}
           className="reactive-input"
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           onFocus={handleFocus}
           onBlur={handleBlur}
           {...rest}

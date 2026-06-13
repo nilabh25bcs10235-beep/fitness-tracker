@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import { useVitality } from '../context/VitalityContext';
 
 const BODY_PARTS = [
   'back', 'chest', 'shoulders', 'biceps', 'triceps',
@@ -21,6 +22,7 @@ export default function Workouts({ onRefresh }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateTheme, setCelebrateTheme] = useState('fire');
+  const { signalSuccess } = useVitality();
 
   const loadExercises = async () => {
     const target = customPart.trim() || bodyPart;
@@ -126,6 +128,7 @@ export default function Workouts({ onRefresh }) {
                   setSavedMsg('Workout saved to today\'s tracker!');
                   setCelebrateTheme('fire');
                   setCelebrate(true);
+                  signalSuccess('workouts');
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);
@@ -221,6 +224,7 @@ export default function Workouts({ onRefresh }) {
                   setSavedMsg(`${plan.body_part} workout saved to today's tracker!`);
                   setCelebrateTheme('workout');
                   setCelebrate(true);
+                  signalSuccess('workouts');
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);

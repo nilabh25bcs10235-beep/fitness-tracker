@@ -4,7 +4,9 @@ import { api } from './api';
 import { supabase, supabaseConfigured } from './lib/supabase';
 import AuthScreen from './components/AuthScreen';
 import Onboarding from './components/Onboarding';
-import FloatingFoodBackground from './components/FloatingFoodBackground';
+import { VitalityProvider } from './context/VitalityContext';
+import VitalityBackground from './components/vitality/VitalityBackground';
+import VitalityIntensityControl from './components/vitality/VitalityIntensityControl';
 import VortexTransition from './components/VortexTransition';
 
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -229,105 +231,114 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div className="app-root app-visible">
-        <FloatingFoodBackground />
-        <div className="app loading-screen">Loading...</div>
-      </div>
+      <VitalityProvider context="dashboard">
+        <div className="app-root app-visible">
+          <VitalityBackground />
+          <div className="app loading-screen">Loading...</div>
+        </div>
+      </VitalityProvider>
     );
   }
 
   if (supabaseConfigured && !session) {
     return (
-      <div className="app-root app-visible">
-        <FloatingFoodBackground />
-        <AuthScreen />
-        <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
-      </div>
+      <VitalityProvider context="dashboard">
+        <div className="app-root app-visible">
+          <VitalityBackground />
+          <AuthScreen />
+          <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
+        </div>
+      </VitalityProvider>
     );
   }
 
   if (!user) {
     return (
-      <div className={`app-root ${!showVortex ? 'app-visible' : 'app-entering'}`}>
-        <FloatingFoodBackground />
-        <div className="app">
-          <header className="app-header glass-header">
-            <div className="logo">FitTrack AI</div>
-            {session && (
-              <button type="button" className="btn btn-ghost" onClick={handleLogout}>
-                Sign out
-              </button>
-            )}
-          </header>
-          {error && <p className="auth-error">{error}</p>}
-          <Onboarding onComplete={handleOnboard} loading={loading} />
+      <VitalityProvider context="dashboard">
+        <div className={`app-root ${!showVortex ? 'app-visible' : 'app-entering'}`}>
+          <VitalityBackground />
+          <div className="app">
+            <header className="app-header glass-header">
+              <div className="logo">FitTrack AI</div>
+              {session && (
+                <button type="button" className="btn btn-ghost" onClick={handleLogout}>
+                  Sign out
+                </button>
+              )}
+            </header>
+            {error && <p className="auth-error">{error}</p>}
+            <Onboarding onComplete={handleOnboard} loading={loading} />
+          </div>
+          <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
         </div>
-        <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
-      </div>
+      </VitalityProvider>
     );
   }
 
   return (
-    <div className={`app-root ${appVisible ? 'app-visible' : 'app-entering'}`}>
-      <FloatingFoodBackground />
-      <div className="app">
-        <header className="app-header glass-header">
-          <div>
-            <div className="logo">FitTrack AI</div>
-            <div className="header-sub">
-              Hi {user?.name || 'there'} · {user?.goal?.replace('_', ' ')}
+    <VitalityProvider context={activeTheme}>
+      <div className={`app-root ${appVisible ? 'app-visible' : 'app-entering'}`}>
+        <VitalityBackground />
+        <div className="app">
+          <header className="app-header glass-header">
+            <div>
+              <div className="logo">FitTrack AI</div>
+              <div className="header-sub">
+                Hi {user?.name || 'there'} · {user?.goal?.replace('_', ' ')}
+              </div>
             </div>
+            <div className="header-actions">
+              <VitalityIntensityControl />
+              <span className={`ai-status ${aiEnabled ? 'on' : ''}`}>
+                {aiEnabled ? '● AI Coach Online' : '○ AI Coach Offline'}
+              </span>
+              <button type="button" className="btn btn-ghost" onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          </header>
+
+          {error && <p className="auth-error">{error}</p>}
+
+          <nav className="tabs">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                className={`tab-${t.theme} ${tab === t.id ? 'active' : ''}`}
+                onClick={() => switchTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+
+          <div className={`panel-box panel-${activeTheme} tab-panel`}>
+            <Suspense fallback={<TabFallback />}>
+              {displayTab === 'dashboard' && (
+                <Dashboard
+                  data={dashboard}
+                  tracker={weeklyTracker}
+                  hydration={hydration}
+                  onLogWeight={handleLogWeight}
+                  onHydrationUpdate={handleHydrationUpdate}
+                />
+              )}
+              {displayTab === 'meals' && (
+                <MealLogger meals={meals} onRefresh={refresh} />
+              )}
+              {displayTab === 'workouts' && (
+                <Workouts onRefresh={refresh} />
+              )}
+              {displayTab === 'recipes' && (
+                <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
+              )}
+              {displayTab === 'ai' && <AIInsights />}
+            </Suspense>
           </div>
-          <div className="header-actions">
-            <span className={`ai-status ${aiEnabled ? 'on' : ''}`}>
-              {aiEnabled ? '● AI Coach Online' : '○ AI Coach Offline'}
-            </span>
-            <button type="button" className="btn btn-ghost" onClick={handleLogout}>
-              Sign out
-            </button>
-          </div>
-        </header>
-
-        {error && <p className="auth-error">{error}</p>}
-
-        <nav className="tabs">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              className={`tab-${t.theme} ${tab === t.id ? 'active' : ''}`}
-              onClick={() => switchTab(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
-
-        <div className={`panel-box panel-${activeTheme} tab-panel`}>
-          <Suspense fallback={<TabFallback />}>
-            {displayTab === 'dashboard' && (
-              <Dashboard
-                data={dashboard}
-                tracker={weeklyTracker}
-                hydration={hydration}
-                onLogWeight={handleLogWeight}
-                onHydrationUpdate={handleHydrationUpdate}
-              />
-            )}
-            {displayTab === 'meals' && (
-              <MealLogger meals={meals} onRefresh={refresh} />
-            )}
-            {displayTab === 'workouts' && (
-              <Workouts onRefresh={refresh} />
-            )}
-            {displayTab === 'recipes' && (
-              <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
-            )}
-            {displayTab === 'ai' && <AIInsights />}
-          </Suspense>
         </div>
+        <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
       </div>
-      <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
-    </div>
+    </VitalityProvider>
   );
 }

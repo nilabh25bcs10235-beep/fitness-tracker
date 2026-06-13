@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { api } from '../api';
 import WaterGlass from './WaterGlass';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import { useVitality } from '../context/VitalityContext';
 
 export default function HydrationPlan({ data, onUpdate }) {
   const [logging, setLogging] = useState(false);
   const [splashing, setSplashing] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-  const [droplets, setDroplets] = useState([]);
+  const { signalSuccess } = useVitality();
 
   if (!data) return null;
 
@@ -15,36 +16,19 @@ export default function HydrationPlan({ data, onUpdate }) {
     setLogging(true);
     setSplashing(true);
     setCelebrate(true);
-    setDroplets(
-      Array.from({ length: 8 }, (_, i) => ({
-        id: `${Date.now()}-${i}`,
-        left: 8 + Math.random() * 84,
-        delay: Math.random() * 0.3,
-      })),
-    );
+    signalSuccess('water');
     try {
       const res = await api.logWater({ amount_ml: data.glass_size_ml });
       onUpdate?.(res);
     } finally {
       setLogging(false);
       setTimeout(() => setSplashing(false), 900);
-      setTimeout(() => setDroplets([]), 1200);
     }
   };
 
   return (
     <div className="card glass-card box-glow box-hydration hydration-plan card-lively">
-      <div className="hydration-particle-layer" aria-hidden="true">
-        {droplets.map((d) => (
-          <span
-            key={d.id}
-            className="hydration-droplet"
-            style={{ left: `${d.left}%`, bottom: '30%', animationDelay: `${d.delay}s` }}
-          >
-            💧
-          </span>
-        ))}
-      </div>
+
       <div className="hydration-header">
         <div>
           <h3>Hydration Plan</h3>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import { useVitality } from '../context/VitalityContext';
 
 function EditableMealRow({ entry, onChange, onRemove }) {
   return (
@@ -71,6 +72,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
   const [saving, setSaving] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateMsg, setCelebrateMsg] = useState('');
+  const { signalSuccess } = useVitality();
 
   useEffect(() => {
     if (data?.has_plan) {
@@ -93,6 +95,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       setStep('results');
       setCelebrateMsg('Your meal plan is ready!');
       setCelebrate(true);
+      signalSuccess('recipe');
       onRefresh?.();
     } catch (e) {
       setError(e.message);
@@ -108,6 +111,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       setPlan(res);
       setCelebrateMsg("Today's plan saved!");
       setCelebrate(true);
+      signalSuccess('recipe');
     } finally {
       setSaving('');
     }
@@ -120,6 +124,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       setPlan(res);
       setCelebrateMsg('Grocery list saved!');
       setCelebrate(true);
+      signalSuccess('recipe');
     } finally {
       setSaving('');
     }
@@ -132,6 +137,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       setPlan(res);
       setCelebrateMsg('Weekly schedule saved!');
       setCelebrate(true);
+      signalSuccess('recipe');
     } finally {
       setSaving('');
     }
