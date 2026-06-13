@@ -1,13 +1,16 @@
 """
-Collaborative image analysis: Groq vision + Groq text work together,
-then run REVIEW_PASSES reconciliation rounds before finalizing stats.
+Collaborative image analysis: Groq vision + Groq text, then batched reconciliation.
+
+Time complexity (API round-trips):
+  Meal: vision → text → 1 batched review  = 3 calls (was 7 sequential)
+  Body: vision ‖ text → 1 batched review = 2 wall-clock stages (was 7 sequential)
 """
 
 import json
-from typing import Callable, Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable, Dict, Optional
 
 from .groq_client import (
-    AIError,
     _ai_result,
     _chat_json,
     _vision_json,
@@ -16,6 +19,7 @@ from .groq_client import (
 )
 
 REVIEW_PASSES = 5
+_PIPELINE_STAGES = 4  # vision, cross-check, deep review, finalize
 
 MEAL_VISION_SYSTEM = """You are a strict nutrition vision expert for Indian and global meals.
 Identify every visible food item and estimate nutrition realistically.
@@ -49,12 +53,15 @@ Return ONLY valid JSON:
   "micro_description": "2-3 sentence micronutrient summary"
 }"""
 
-MEAL_REVIEW_SYSTEM = """You are a senior nutrition auditor reconciling vision AI and text AI estimates.
-Each pass must cross-check both sources, fix inconsistencies, and refine numbers conservatively.
-Do NOT output confidence scores.
+MEAL_BATCHED_REVIEW_SYSTEM = f"""You are a senior nutrition auditor reconciling vision AI and text AI estimates.
+Internally perform exactly {REVIEW_PASSES} reconciliation passes:
+  - Pass 1-2: align macros and calories with both sources
+  - Pass 3-4: tighten micronutrients and conservative fat/sugar estimates
+  - Pass 5: final consistency check
+Output ONLY the final pass-5 JSON. Do NOT output confidence scores or pass-by-pass logs.
 
 Return ONLY valid JSON:
-{
+{{
   "name": "meal name",
   "description": "refined description",
   "calories": number,
@@ -62,8 +69,8 @@ Return ONLY valid JSON:
   "carbs_g": number,
   "fat_g": number,
   "fiber_g": number,
-  "notes": "what changed this pass and why",
-  "micronutrients": {
+  "notes": "brief final reconciliation note",
+  "micronutrients": {{
     "iron_mg": number,
     "calcium_mg": number,
     "vitamin_c_mg": number,
@@ -74,9 +81,9 @@ Return ONLY valid JSON:
     "vitamin_d_mcg": number,
     "sugar_g": number,
     "saturated_fat_g": number
-  },
+  }},
   "micro_description": "2-3 sentence micronutrient summary"
-}"""
+}}"""
 
 BODY_STATS_SCHEMA = """{
   "estimated_bmi": number,
@@ -109,12 +116,27 @@ This is an AI estimate only — not medical advice. Do NOT output confidence sco
 Return ONLY valid JSON:
 {BODY_STATS_SCHEMA}"""
 
-BODY_REVIEW_SYSTEM = f"""You are a senior fitness assessor reconciling vision AI and profile-based text AI.
-Cross-check photo observations with user profile data. Refine all stats conservatively and coherently.
-Do NOT output confidence scores.
+BODY_BATCHED_REVIEW_SYSTEM = f"""You are a senior fitness assessor reconciling vision AI and profile-based text AI.
+Internally perform exactly {REVIEW_PASSES} reconciliation passes:
+  - Pass 1-2: align BMI, body fat, and muscle mass across sources
+  - Pass 3-4: refine metabolic stats, targets, and posture metrics
+  - Pass 5: final coherent body composition report
+Output ONLY the final pass-5 JSON. Do NOT output confidence scores or pass-by-pass logs.
 
 Return ONLY valid JSON:
 {BODY_STATS_SCHEMA}"""
+
+BODY_NUMERIC_KEYS = [
+    "estimated_bmi", "body_fat_pct", "muscle_mass_kg", "lean_mass_kg", "fat_mass_kg",
+    "skeletal_muscle_pct", "visceral_fat_level", "waist_to_height_ratio", "metabolic_age",
+    "basal_metabolic_rate_kcal", "daily_calorie_estimate_kcal", "protein_target_g",
+    "hydration_target_ml", "posture_score",
+]
+
+MICRO_KEYS = [
+    "iron_mg", "calcium_mg", "vitamin_c_mg", "sodium_mg", "potassium_mg",
+    "zinc_mg", "vitamin_a_mcg", "vitamin_d_mcg", "sugar_g", "saturated_fat_g",
+]
 
 
 def _num(value, default=0.0) -> float:
@@ -124,16 +146,16 @@ def _num(value, default=0.0) -> float:
         return default
 
 
+def _strip_ai_meta(payload: Dict) -> Dict:
+    return {k: v for k, v in payload.items() if k not in ("is_ai", "source")}
+
+
 def _merge_meal_estimates(vision: Dict, text: Dict) -> Dict:
-    micro_keys = [
-        "iron_mg", "calcium_mg", "vitamin_c_mg", "sodium_mg", "potassium_mg",
-        "zinc_mg", "vitamin_a_mcg", "vitamin_d_mcg", "sugar_g", "saturated_fat_g",
-    ]
     vision_micro = vision.get("micronutrients") or {}
     text_micro = text.get("micronutrients") or {}
     micronutrients = {
         key: round((_num(vision_micro.get(key)) + _num(text_micro.get(key))) / 2, 2)
-        for key in micro_keys
+        for key in MICRO_KEYS
     }
 
     return {
@@ -150,14 +172,6 @@ def _merge_meal_estimates(vision: Dict, text: Dict) -> Dict:
     }
 
 
-BODY_NUMERIC_KEYS = [
-    "estimated_bmi", "body_fat_pct", "muscle_mass_kg", "lean_mass_kg", "fat_mass_kg",
-    "skeletal_muscle_pct", "visceral_fat_level", "waist_to_height_ratio", "metabolic_age",
-    "basal_metabolic_rate_kcal", "daily_calorie_estimate_kcal", "protein_target_g",
-    "hydration_target_ml", "posture_score",
-]
-
-
 def _avg_field(vision: Dict, text: Dict, key: str, text_key: Optional[str] = None) -> float:
     v = _num(vision.get(key))
     t = _num(text.get(text_key or key))
@@ -170,7 +184,11 @@ def _merge_body_estimates(vision: Dict, text: Dict, user_context: Dict) -> Dict:
     weight = _num(user_context.get("weight_kg"), 70)
     text_muscle = _num(text.get("muscle_mass_kg"), weight * 0.4)
     vision_muscle = _num(vision.get("muscle_mass_kg"))
-    muscle_mass = round((vision_muscle + text_muscle) / 2, 1) if vision_muscle and text_muscle else vision_muscle or text_muscle
+    muscle_mass = (
+        round((vision_muscle + text_muscle) / 2, 1)
+        if vision_muscle and text_muscle
+        else vision_muscle or text_muscle
+    )
 
     merged = {
         "estimated_bmi": _avg_field(vision, text, "estimated_bmi", "bmi"),
@@ -192,56 +210,70 @@ def _merge_body_estimates(vision: Dict, text: Dict, user_context: Dict) -> Dict:
         if val:
             merged[key] = val
 
-    if not merged.get("lean_mass_kg") and weight and merged.get("body_fat_pct"):
-        merged["lean_mass_kg"] = round(weight * (1 - merged["body_fat_pct"] / 100), 1)
-    if not merged.get("fat_mass_kg") and weight and merged.get("body_fat_pct"):
-        merged["fat_mass_kg"] = round(weight * merged["body_fat_pct"] / 100, 1)
+    body_fat = merged.get("body_fat_pct")
+    if not merged.get("lean_mass_kg") and weight and body_fat:
+        merged["lean_mass_kg"] = round(weight * (1 - body_fat / 100), 1)
+    if not merged.get("fat_mass_kg") and weight and body_fat:
+        merged["fat_mass_kg"] = round(weight * body_fat / 100, 1)
 
     return merged
 
 
-def _meal_review_pass(
+def _batched_meal_review(
     vision: Dict,
     text: Dict,
-    current: Dict,
-    pass_num: int,
+    merged: Dict,
     dietary_restrictions: str,
 ) -> Dict:
-    user = json.dumps({
-        "review_pass": pass_num,
-        "total_passes": REVIEW_PASSES,
+    payload = json.dumps({
+        "review_passes": REVIEW_PASSES,
         "dietary_restrictions": dietary_restrictions or "none",
         "vision_analysis": vision,
         "text_analysis": text,
-        "current_estimate": current,
-        "instruction": (
-            "Reconcile vision and text. Prefer conservative calorie and fat estimates "
-            "for indulgent meals. Keep micronutrients internally consistent."
-        ),
+        "merged_estimate": merged,
     })
-    return _chat_json(MEAL_REVIEW_SYSTEM, user)
+    return _chat_json(MEAL_BATCHED_REVIEW_SYSTEM, payload, max_tokens=1000)
 
 
-def _body_review_pass(
+def _batched_body_review(
     vision: Dict,
     text: Dict,
-    current: Dict,
-    pass_num: int,
+    merged: Dict,
     user_context: Dict,
 ) -> Dict:
-    user = json.dumps({
-        "review_pass": pass_num,
-        "total_passes": REVIEW_PASSES,
+    payload = json.dumps({
+        "review_passes": REVIEW_PASSES,
         "user_profile": user_context,
         "vision_analysis": vision,
         "text_analysis": text,
-        "current_estimate": current,
-        "instruction": (
-            "Reconcile photo-based and profile-based estimates. "
-            "Align BMI, body fat, and muscle mass into a coherent assessment."
-        ),
+        "merged_estimate": merged,
     })
-    return _chat_json(BODY_REVIEW_SYSTEM, user)
+    return _chat_json(BODY_BATCHED_REVIEW_SYSTEM, payload, max_tokens=1400)
+
+
+def _body_profile_text(user_context: Dict) -> Dict:
+    return estimate_body_composition(
+        age=int(user_context.get("age") or 30),
+        weight_kg=_num(user_context.get("weight_kg"), 70),
+        height_cm=user_context.get("height_cm"),
+        gender=user_context.get("gender"),
+        goal=user_context.get("goal") or "maintain",
+    )
+
+
+def _collaborative_result(
+    current: Dict,
+    *,
+    vision_summary: str,
+    text_summary: str,
+) -> Dict:
+    return _ai_result({
+        **current,
+        "review_passes": REVIEW_PASSES,
+        "analysis_method": "groq_vision+text_batched",
+        "vision_summary": vision_summary,
+        "text_summary": text_summary,
+    })
 
 
 def analyze_meal_image_collaborative(
@@ -249,11 +281,9 @@ def analyze_meal_image_collaborative(
     dietary_restrictions: str = "",
     on_stage: Optional[Callable[[str, int, int], None]] = None,
 ) -> Dict:
-    total_stages = 2 + REVIEW_PASSES + 1
-
     def stage(label: str, step: int) -> None:
         if on_stage:
-            on_stage(label, step, total_stages)
+            on_stage(label, step, _PIPELINE_STAGES)
 
     stage("Vision scan", 1)
     vision = _vision_json(
@@ -264,25 +294,18 @@ def analyze_meal_image_collaborative(
 
     stage("Text cross-check", 2)
     description = vision.get("description") or vision.get("name", "meal from photo")
-    text = estimate_meal_from_text(description, dietary_restrictions)
-    if text.get("is_ai"):
-        text = {k: v for k, v in text.items() if k not in ("is_ai", "source")}
+    text = _strip_ai_meta(estimate_meal_from_text(description, dietary_restrictions))
+    merged = _merge_meal_estimates(vision, text)
 
-    current = _merge_meal_estimates(vision, text)
+    stage(f"Deep review ({REVIEW_PASSES} passes)", 3)
+    current = _batched_meal_review(vision, text, merged, dietary_restrictions)
 
-    for i in range(1, REVIEW_PASSES + 1):
-        stage(f"Review pass {i}/{REVIEW_PASSES}", 2 + i)
-        current = _meal_review_pass(vision, text, current, i, dietary_restrictions)
-
-    stage("Finalizing", total_stages)
-    result = _ai_result({
-        **current,
-        "review_passes": REVIEW_PASSES,
-        "analysis_method": "groq_vision+text_collaborative",
-        "vision_summary": vision.get("description", ""),
-        "text_summary": text.get("description", ""),
-    })
-    return result
+    stage("Finalizing", 4)
+    return _collaborative_result(
+        current,
+        vision_summary=vision.get("description", ""),
+        text_summary=text.get("description", ""),
+    )
 
 
 def analyze_body_image_collaborative(
@@ -290,41 +313,33 @@ def analyze_body_image_collaborative(
     user_context: Dict,
     on_stage: Optional[Callable[[str, int, int], None]] = None,
 ) -> Dict:
-    total_stages = 2 + REVIEW_PASSES + 1
-
     def stage(label: str, step: int) -> None:
         if on_stage:
-            on_stage(label, step, total_stages)
+            on_stage(label, step, _PIPELINE_STAGES)
 
-    stage("Vision scan", 1)
-    vision = _vision_json(
-        BODY_VISION_SYSTEM,
-        f"Analyze this full-body image. User profile: {json.dumps(user_context)}",
-        image_bytes,
-        max_tokens=1800,
+    stage("Vision + profile scan", 1)
+    profile_json = json.dumps(user_context)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        vision_future = pool.submit(
+            _vision_json,
+            BODY_VISION_SYSTEM,
+            f"Analyze this full-body image. User profile: {profile_json}",
+            image_bytes,
+            max_tokens=1800,
+        )
+        text_future = pool.submit(_body_profile_text, user_context)
+        vision = vision_future.result()
+        text = text_future.result()
+
+    stage("Merge estimates", 2)
+    merged = _merge_body_estimates(vision, text, user_context)
+
+    stage(f"Deep review ({REVIEW_PASSES} passes)", 3)
+    current = _batched_body_review(vision, text, merged, user_context)
+
+    stage("Finalizing", 4)
+    return _collaborative_result(
+        current,
+        vision_summary=vision.get("physique_notes", ""),
+        text_summary=text.get("notes", ""),
     )
-
-    stage("Text cross-check", 2)
-    text = estimate_body_composition(
-        age=int(user_context.get("age") or 30),
-        weight_kg=_num(user_context.get("weight_kg"), 70),
-        height_cm=user_context.get("height_cm"),
-        gender=user_context.get("gender"),
-        goal=user_context.get("goal") or "maintain",
-    )
-
-    current = _merge_body_estimates(vision, text, user_context)
-
-    for i in range(1, REVIEW_PASSES + 1):
-        stage(f"Review pass {i}/{REVIEW_PASSES}", 2 + i)
-        current = _body_review_pass(vision, text, current, i, user_context)
-
-    stage("Finalizing", total_stages)
-    result = _ai_result({
-        **current,
-        "review_passes": REVIEW_PASSES,
-        "analysis_method": "groq_vision+text_collaborative",
-        "vision_summary": vision.get("physique_notes", ""),
-        "text_summary": text.get("notes", ""),
-    })
-    return result

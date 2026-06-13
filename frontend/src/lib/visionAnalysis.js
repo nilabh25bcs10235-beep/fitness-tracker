@@ -2,7 +2,8 @@ import { api } from '../api';
 import { isPuterAvailable, puterVisionJson } from './puterVision';
 
 const REVIEW_PASSES = 5;
-const TOTAL_STAGES = 2 + REVIEW_PASSES + 1;
+// UI stages mirror backend pipeline (vision → cross-check → batched review → done)
+const TOTAL_STAGES = 4;
 
 const MEAL_VISION_SYSTEM = `You are a strict nutrition vision expert for Indian and global meals.
 Identify food items in the image and estimate nutrition realistically.
@@ -21,7 +22,7 @@ nutritional_advice, and goal_recommendations array.`;
 const STAGE_LABELS = [
   'Vision scan',
   'Text cross-check',
-  ...Array.from({ length: REVIEW_PASSES }, (_, i) => `Review pass ${i + 1}/${REVIEW_PASSES}`),
+  `Deep review (${REVIEW_PASSES} passes)`,
   'Finalizing',
 ];
 
@@ -44,7 +45,7 @@ function runSimulatedProgress(onProgress, signal) {
     if (stageIndex >= TOTAL_STAGES - 1) {
       clearInterval(interval);
     }
-  }, 2800);
+  }, 1400);
 
   return () => clearInterval(interval);
 }

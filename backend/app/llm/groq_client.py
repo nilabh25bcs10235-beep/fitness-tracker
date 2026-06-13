@@ -47,7 +47,13 @@ def _require_ai():
         raise AIError(_USER_ERROR)
 
 
-def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:
+def _chat_json(
+    system: str,
+    user: str,
+    model: str = TEXT_MODEL,
+    *,
+    max_tokens: int = 900,
+) -> Dict:
     _require_ai()
     groq_error: Optional[Exception] = None
 
@@ -60,7 +66,7 @@ def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:
                     {"role": "user", "content": user},
                 ],
                 temperature=0.4,
-                max_tokens=900,
+                max_tokens=max_tokens,
                 response_format={"type": "json_object"},
             )
             return json.loads(response.choices[0].message.content)
