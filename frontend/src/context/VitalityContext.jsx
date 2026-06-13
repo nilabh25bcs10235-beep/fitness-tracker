@@ -95,7 +95,6 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     setFocusPoint({ x, y, t: Date.now() });
-    setTypingEnergy((e) => Math.max(e, 0.35));
 
     const quoteContext = THEME_TO_CONTEXT[fieldTheme] || context;
     const pool = FOCUS_QUOTES[quoteContext] || FOCUS_QUOTES.dashboard;
@@ -121,10 +120,6 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
     setPowerMode(power);
     setNumericTyping(isNum);
     setTypingEnergy((prev) => Math.min(1, prev + (isNum ? 0.26 : 0.18)));
-    if (decayRef.current) clearTimeout(decayRef.current);
-    decayRef.current = setTimeout(() => {
-      setTypingEnergy((prev) => Math.max(0, prev - 0.18));
-    }, 160);
   }, []);
 
   const signalPulse = useCallback((rect, strength = 0.6) => {
@@ -155,6 +150,19 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
   const signalSuccessFromElement = useCallback((area, el) => {
     signalSuccess(area, cardRectFromElement(el));
   }, [signalSuccess]);
+
+  useEffect(() => {
+    if (typingEnergy <= 0) {
+      powerRef.current = false;
+      setPowerMode(false);
+      setNumericTyping(false);
+      return undefined;
+    }
+    const t = setTimeout(() => {
+      setTypingEnergy((e) => Math.max(0, e - 0.14));
+    }, 140);
+    return () => clearTimeout(t);
+  }, [typingEnergy]);
 
   useEffect(() => () => {
     if (decayRef.current) clearTimeout(decayRef.current);

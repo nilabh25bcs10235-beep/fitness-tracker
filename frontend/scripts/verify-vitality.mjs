@@ -96,23 +96,22 @@ async function main() {
   const workoutInput = await page.$('.reactive-input');
   if (!workoutInput) fail('Layer 3: no reactive input on Workouts tab');
   else {
-    const energyIdle = await canvasEnergy(page, '.vitality-reactive-canvas');
     await workoutInput.click();
-    await page.waitForTimeout(500);
-    const energyFocus = await canvasEnergy(page, '.vitality-reactive-canvas');
-    if (energyFocus < 8) {
-      fail(`Layer 3: focus did not draw on reactive canvas (${energyIdle} -> ${energyFocus})`);
+    await page.waitForTimeout(400);
+    const energyFocusOnly = await canvasEnergy(page, '.vitality-reactive-canvas');
+    if (energyFocusOnly > 1200) {
+      fail(`Layer 3: persistent focus halo on reactive canvas (${energyFocusOnly})`);
     } else {
-      pass(`Layer 3: focus reactive overlay active (${energyIdle} -> ${energyFocus})`);
+      pass(`Layer 3: no sunray/halo on focus alone (${energyFocusOnly})`);
     }
 
     await workoutInput.type('heavy PR 225', { delay: 40 });
     await page.waitForTimeout(600);
     const energyType = await canvasEnergy(page, '.vitality-reactive-canvas');
-    if (energyType <= energyFocus) {
-      fail(`Layer 3: typing did not increase reactive energy (${energyFocus} -> ${energyType})`);
+    if (energyType <= energyFocusOnly + 50) {
+      fail(`Layer 3: typing did not increase reactive energy (${energyFocusOnly} -> ${energyType})`);
     } else {
-      pass(`Layer 3: typing pulses detected (${energyFocus} -> ${energyType})`);
+      pass(`Layer 3: typing ripples detected (${energyFocusOnly} -> ${energyType})`);
     }
 
     const focusQuote = await page.$('.vitality-quote.focus.visible');

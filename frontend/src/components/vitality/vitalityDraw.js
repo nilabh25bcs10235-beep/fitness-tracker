@@ -16,11 +16,15 @@ export function lerpHue(base, warm, t) {
   ];
 }
 
+/** Reactive strength — typing only (no persistent focus halo). */
 export function vitalityEnergy(s) {
-  return Math.min(
-    1,
-    (s.typingEnergy || 0) + (s.focusPoint ? 0.32 : 0) + (s.numericTyping ? 0.12 : 0),
-  );
+  return Math.min(1, (s.typingEnergy || 0) + (s.numericTyping ? 0.08 : 0));
+}
+
+/** Ambient flow toward focused field — subtle idle pull, stronger while typing. */
+export function focusFlowStrength(s) {
+  if (!s.focusPoint) return 0;
+  return Math.min(1, 0.1 + (s.typingEnergy || 0) * 0.9);
 }
 
 export function drawPulses(ctx, s, { baseHue, scale, now }) {
@@ -39,44 +43,6 @@ export function drawPulses(ctx, s, { baseHue, scale, now }) {
       ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
       ctx.stroke();
     }
-  });
-}
-
-export function drawFocusReactive(ctx, s, { baseHue, hr, hg, hb, baseAlpha, scale, energy, now }) {
-  const focus = s.focusPoint;
-  if (!focus) return;
-
-  const spokes = 12;
-  for (let i = 0; i < spokes; i += 1) {
-    const angle = (i / spokes) * Math.PI * 2 + now / 1400;
-    const len = 55 + energy * 90 + Math.sin(now / 500 + i) * 18;
-    const x2 = focus.x + Math.cos(angle) * len;
-    const y2 = focus.y + Math.sin(angle) * len;
-    const alpha = baseAlpha * (0.45 + energy * 0.55);
-    ctx.strokeStyle = `rgba(${hr}, ${hg}, ${hb}, ${alpha})`;
-    ctx.lineWidth = 0.7 + energy * 0.9;
-    ctx.beginPath();
-    ctx.moveTo(focus.x, focus.y);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-
-  const focusGlow = ctx.createRadialGradient(
-    focus.x, focus.y, 0,
-    focus.x, focus.y, 110 + energy * 50,
-  );
-  focusGlow.addColorStop(0, `rgba(${hr}, ${hg}, ${hb}, ${0.14 + energy * 0.2})`);
-  focusGlow.addColorStop(0.55, `rgba(${hr}, ${hg}, ${hb}, ${0.05 + energy * 0.08})`);
-  focusGlow.addColorStop(1, 'rgba(34, 211, 238, 0)');
-  ctx.fillStyle = focusGlow;
-  ctx.beginPath();
-  ctx.arc(focus.x, focus.y, 110 + energy * 50, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawPulses(ctx, { pulses: [{ x: focus.x, y: focus.y, strength: 0.35 + energy * 0.4, warm: s.powerMode, t: now - 120 }] }, {
-    baseHue,
-    scale,
-    now,
   });
 }
 

@@ -4,9 +4,9 @@ import VitalityQuoteLayer from './VitalityQuoteLayer';
 import {
   THEME_HUE,
   WARM_HUE,
-  drawFocusReactive,
   drawPulses,
   drawSuccessWave,
+  focusFlowStrength,
   lerpHue,
   vitalityEnergy,
 } from './vitalityDraw';
@@ -112,6 +112,7 @@ function VitalityAmbientCanvas() {
     const warmMix = s.powerMode ? 0.55 : 0;
     const [hr, hg, hb] = lerpHue(baseHue, WARM_HUE, warmMix);
     const energy = vitalityEnergy(s);
+    const flow = focusFlowStrength(s);
     const now = Date.now();
     const focus = s.focusPoint;
 
@@ -133,14 +134,14 @@ function VitalityAmbientCanvas() {
       const wave = Math.sin(n.phase + now / (calm > 0.9 ? 2200 : 3200)) * 0.04;
       n.phase += 0.004 * themeSpeed;
 
-      if (focus) {
+      if (focus && flow > 0.05) {
         const dx = focus.x - n.x;
         const dy = focus.y - n.y;
         const dist = Math.hypot(dx, dy) || 1;
-        const pull = 0.00085 * energy * (1 + (s.powerMode ? 0.85 : 0)) * calm;
+        const pull = 0.00085 * flow * (1 + (s.powerMode ? 0.85 : 0)) * calm;
         n.vx += (dx / dist) * pull;
         n.vy += (dy / dist) * pull * 0.65;
-        if (dist < FLOW_DIST) n.glow = Math.min(1, n.glow + 0.08 * energy);
+        if (dist < FLOW_DIST) n.glow = Math.min(1, n.glow + 0.08 * flow);
         else n.glow = Math.max(0, n.glow - 0.018);
       } else {
         n.glow = Math.max(0, n.glow - 0.014);
@@ -161,7 +162,7 @@ function VitalityAmbientCanvas() {
       if (n.x > width + 20) n.x = -20;
     });
 
-    if (focus) {
+    if (focus && flow > 0.08) {
       const nearby = nodes
         .map((n) => ({ n, d: Math.hypot(n.x - focus.x, n.y - focus.y) }))
         .filter(({ d }) => d < FLOW_DIST)
@@ -169,7 +170,7 @@ function VitalityAmbientCanvas() {
         .slice(0, 14);
 
       nearby.forEach(({ n, d }) => {
-        const alpha = baseAlpha * (1 - d / FLOW_DIST) * (0.35 + energy * 0.65);
+        const alpha = baseAlpha * (1 - d / FLOW_DIST) * (0.35 + flow * 0.65);
         ctx.strokeStyle = `rgba(${hr}, ${hg}, ${hb}, ${alpha})`;
         ctx.lineWidth = 0.5 + energy * 0.6;
         ctx.beginPath();
@@ -189,11 +190,11 @@ function VitalityAmbientCanvas() {
         if (dist > CONNECT_DIST) continue;
 
         let lineBoost = 0.5 + energy * 0.55;
-        if (focus) {
+        if (focus && flow > 0.08) {
           const midX = (a.x + b.x) / 2;
           const midY = (a.y + b.y) / 2;
           const fd = Math.hypot(midX - focus.x, midY - focus.y);
-          if (fd < FLOW_DIST) lineBoost += (1 - fd / FLOW_DIST) * 0.4;
+          if (fd < FLOW_DIST) lineBoost += (1 - fd / FLOW_DIST) * 0.4 * flow;
         }
 
         const lineAlpha = baseAlpha * (1 - dist / CONNECT_DIST) * lineBoost;
@@ -254,16 +255,8 @@ function VitalityReactiveCanvas() {
     if (s.intensity === 'off') return;
 
     const scale = s.intensityScale ?? 1;
-    const baseAlpha = (s.intensity === 'low' ? 0.18 : s.intensity === 'high' ? 0.34 : 0.26) * scale;
     const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
-    const warmMix = s.powerMode ? 0.55 : 0;
-    const [hr, hg, hb] = lerpHue(baseHue, WARM_HUE, warmMix);
-    const energy = vitalityEnergy(s);
     const now = Date.now();
-
-    if (s.focusPoint) {
-      drawFocusReactive(ctx, s, { baseHue, hr, hg, hb, baseAlpha, scale, energy, now });
-    }
 
     drawPulses(ctx, s, { baseHue, scale, now });
     drawSuccessWave(ctx, s, { scale, width, height, now });
