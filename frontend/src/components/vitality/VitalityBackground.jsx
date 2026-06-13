@@ -52,10 +52,7 @@ function VitalityCanvas() {
   const canvasRef = useRef(null);
   const nodesRef = useRef([]);
   const frameRef = useRef(null);
-  const stateRef = useRef({});
-
-  const vitality = useVitality();
-  stateRef.current = vitality;
+  const { runtimeRef } = useVitality();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -83,7 +80,7 @@ function VitalityCanvas() {
     window.addEventListener('resize', resize);
 
     const draw = () => {
-      const s = stateRef.current;
+      const s = runtimeRef?.current || {};
       if (s.intensity === 'off') {
         ctx.clearRect(0, 0, width, height);
         frameRef.current = requestAnimationFrame(draw);
@@ -91,7 +88,7 @@ function VitalityCanvas() {
       }
 
       const scale = s.intensityScale;
-      const baseAlpha = (s.intensity === 'low' ? 0.08 : s.intensity === 'high' ? 0.2 : 0.14) * scale;
+      const baseAlpha = (s.intensity === 'low' ? 0.14 : s.intensity === 'high' ? 0.28 : 0.22) * scale;
       const calm = s.calmMode ? 0.52 : 1;
       const themeSpeed = (THEME_SPEED[s.context] || 1) * calm;
       const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
@@ -122,10 +119,10 @@ function VitalityCanvas() {
           const dx = focus.x - n.x;
           const dy = focus.y - n.y;
           const dist = Math.hypot(dx, dy) || 1;
-          const pull = 0.00055 * energy * (1 + (s.powerMode ? 0.65 : 0)) * calm;
+          const pull = 0.00085 * energy * (1 + (s.powerMode ? 0.85 : 0)) * calm;
           n.vx += (dx / dist) * pull;
           n.vy += (dy / dist) * pull * 0.65;
-          if (dist < FLOW_DIST) n.glow = Math.min(1, n.glow + 0.05 * energy);
+          if (dist < FLOW_DIST) n.glow = Math.min(1, n.glow + 0.08 * energy);
           else n.glow = Math.max(0, n.glow - 0.018);
         } else {
           n.glow = Math.max(0, n.glow - 0.014);
@@ -167,7 +164,7 @@ function VitalityCanvas() {
           focus.x, focus.y, 0,
           focus.x, focus.y, 90 + energy * 40,
         );
-        focusGlow.addColorStop(0, `rgba(${hr}, ${hg}, ${hb}, ${0.06 + energy * 0.08})`);
+        focusGlow.addColorStop(0, `rgba(${hr}, ${hg}, ${hb}, ${0.1 + energy * 0.14})`);
         focusGlow.addColorStop(1, 'rgba(34, 211, 238, 0)');
         ctx.fillStyle = focusGlow;
         ctx.beginPath();
@@ -221,7 +218,7 @@ function VitalityCanvas() {
         for (let r = 0; r < rings; r += 1) {
           const ringAge = Math.min(1, age + r * 0.12);
           const radius = 6 + ringAge * (p.strength > 0.7 ? 95 : 72);
-          const alpha = (1 - ringAge) * 0.38 * scale * p.strength;
+          const alpha = (1 - ringAge) * 0.52 * scale * p.strength;
           ctx.strokeStyle = `rgba(${pr[0]}, ${pr[1]}, ${pr[2]}, ${alpha})`;
           ctx.lineWidth = 1.2 + (1 - ringAge) * 1.5;
           ctx.beginPath();
@@ -238,7 +235,7 @@ function VitalityCanvas() {
           const waveY = rect.bottom - (rect.bottom - rect.top) * age;
           const waveGrad = ctx.createLinearGradient(rect.left, waveY - 30, rect.left, waveY + 30);
           waveGrad.addColorStop(0, 'rgba(34, 211, 238, 0)');
-          waveGrad.addColorStop(0.5, `rgba(52, 211, 153, ${(1 - age) * 0.32 * scale})`);
+          waveGrad.addColorStop(0.5, `rgba(52, 211, 153, ${(1 - age) * 0.48 * scale})`);
           waveGrad.addColorStop(1, 'rgba(34, 211, 238, 0)');
           ctx.fillStyle = waveGrad;
           ctx.fillRect(rect.left - 8, waveY - 40, rect.width + 16, 80);
@@ -295,14 +292,20 @@ function VitalityBackground() {
   const { intensity, calmMode } = useVitality();
 
   return (
-    <div
-      className={`vitality-bg ${intensity === 'off' ? 'vitality-off' : ''} ${calmMode ? 'vitality-calm' : ''}`}
-      aria-hidden="true"
-    >
-      <div className="vitality-base" />
-      <VitalityCanvas />
-      <VitalityQuoteLayer />
-    </div>
+    <>
+      <div
+        className={`vitality-bg ${intensity === 'off' ? 'vitality-off' : ''} ${calmMode ? 'vitality-calm' : ''}`}
+        aria-hidden="true"
+      >
+        <div className="vitality-base" />
+        <VitalityCanvas />
+      </div>
+      {intensity !== 'off' && (
+        <div className="vitality-overlay" aria-hidden="true">
+          <VitalityQuoteLayer />
+        </div>
+      )}
+    </>
   );
 }
 

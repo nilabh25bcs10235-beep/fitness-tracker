@@ -2114,9 +2114,16 @@ button.chip:active {
   pointer-events: none;
 }
 
-.vitality-bg.vitality-off .vitality-canvas,
-.vitality-bg.vitality-off .vitality-quotes {
+.vitality-bg.vitality-off .vitality-canvas {
   display: none;
+}
+
+.vitality-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .vitality-base {
@@ -2147,7 +2154,6 @@ button.chip:active {
 .vitality-quotes {
   position: absolute;
   inset: 0;
-  z-index: 1;
   pointer-events: none;
   overflow: hidden;
 }
@@ -2189,12 +2195,12 @@ button.chip:active {
 }
 
 .vitality-quote.ambient.visible {
-  opacity: 0.07;
+  opacity: 0.11;
   transform: translateY(0);
 }
 
 .vitality-quote.ambient.slot-tr.visible {
-  opacity: 0.05;
+  opacity: 0.09;
 }
 
 /* Focus — gentle glow when typing in a field (up to ~11%) */
@@ -2206,13 +2212,13 @@ button.chip:active {
 }
 
 .vitality-quote.focus.visible {
-  opacity: 0.1;
+  opacity: 0.16;
   transform: translateY(0);
   animation: quote-focus-glow 3s ease-in-out infinite;
 }
 
 .vitality-quote.focus.typing.visible {
-  opacity: 0.12;
+  opacity: 0.2;
 }
 
 /* Save / log micro-reward — brief affirming quote */
@@ -2227,7 +2233,7 @@ button.chip:active {
 }
 
 .vitality-quote.reward.visible {
-  opacity: 0.12;
+  opacity: 0.18;
   transform: translateX(-50%) translateY(0);
   animation: quote-reward-glow 5.5s ease-in-out;
 }
@@ -2239,8 +2245,8 @@ button.chip:active {
 
 @keyframes quote-reward-glow {
   0% { opacity: 0; transform: translateX(-50%) translateY(14px); }
-  12% { opacity: 0.12; transform: translateX(-50%) translateY(0); }
-  75% { opacity: 0.1; }
+  12% { opacity: 0.18; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 0.14; }
   100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
 }
 
@@ -2257,7 +2263,7 @@ button.chip:active {
 }
 
 .vitality-quotes[data-context="ai"] .vitality-quote.ambient.visible {
-  opacity: 0.08;
+  opacity: 0.12;
 }
 
 .vitality-toggle,
@@ -2325,7 +2331,8 @@ button.chip:active {
   }
 
   .vitality-quote.focus {
-    display: none;
+    max-width: 52vw;
+    font-size: 0.9rem;
   }
 
   .vitality-quote.reward {

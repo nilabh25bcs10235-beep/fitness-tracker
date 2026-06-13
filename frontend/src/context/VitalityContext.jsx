@@ -34,6 +34,35 @@ function loadIntensity() {
 
 const INTENSITY_SCALE = { off: 0, low: 0.55, medium: 1, high: 1.35 };
 
+const VITALITY_STUB_RUNTIME = {
+  context: 'dashboard',
+  intensity: 'medium',
+  intensityScale: 1,
+  calmMode: false,
+  focusPoint: null,
+  typingEnergy: 0,
+  numericTyping: false,
+  powerMode: false,
+  pulses: [],
+  successWave: 0,
+  successRect: null,
+};
+
+const VITALITY_STUB = {
+  ...VITALITY_STUB_RUNTIME,
+  setIntensity: () => {},
+  quoteHighlight: null,
+  quoteFocus: null,
+  quotes: VITALITY_QUOTES.dashboard,
+  signalFocus: () => {},
+  signalBlur: () => {},
+  signalTyping: () => {},
+  signalPulse: () => {},
+  signalSuccess: () => {},
+  signalSuccessFromElement: () => {},
+  runtimeRef: { current: VITALITY_STUB_RUNTIME },
+};
+
 export function VitalityProvider({ context = 'dashboard', tracker = null, children }) {
   const [intensity, setIntensityState] = useState(loadIntensity);
   const [focusPoint, setFocusPoint] = useState(null);
@@ -48,6 +77,7 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
   const decayRef = useRef(null);
   const focusQuoteRef = useRef(null);
   const powerRef = useRef(false);
+  const runtimeRef = useRef({});
 
   const calmMode = useMemo(() => computeCalmMode(tracker), [tracker]);
 
@@ -184,6 +214,7 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
       signalPulse,
       signalSuccess,
       signalSuccessFromElement,
+      runtimeRef,
     }),
     [
       context,
@@ -208,6 +239,20 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
     ],
   );
 
+  runtimeRef.current = {
+    context,
+    intensity,
+    intensityScale: INTENSITY_SCALE[intensity] ?? 1,
+    calmMode,
+    focusPoint,
+    typingEnergy,
+    numericTyping,
+    powerMode,
+    pulses,
+    successWave,
+    successRect,
+  };
+
   return (
     <VitalityContext.Provider value={value}>
       {children}
@@ -217,15 +262,5 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
 
 export function useVitality() {
   const ctx = useContext(VitalityContext);
-  if (!ctx) {
-    return {
-      signalFocus: () => {},
-      signalBlur: () => {},
-      signalTyping: () => {},
-      signalPulse: () => {},
-      signalSuccess: () => {},
-      signalSuccessFromElement: () => {},
-    };
-  }
-  return ctx;
+  return ctx || VITALITY_STUB;
 }
