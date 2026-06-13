@@ -5,8 +5,8 @@ from ..database import get_db
 from ..deps import get_auth_id, get_user_profile
 from ..models import User
 from ..schemas import UserCreate, UserResponse
-from ..llm.groq_client import calculate_targets, AIError
 from ..services.hydration_plan import water_target_ml
+from ..services.nutrition_math import calculate_targets_local
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -21,17 +21,13 @@ def create_user(
     if existing:
         raise HTTPException(status_code=400, detail="Profile already exists for this account.")
 
-    try:
-        targets = calculate_targets(
-            payload.age,
-            payload.weight_kg,
-            payload.height_cm,
-            payload.goal,
-            payload.gender,
-            payload.dietary_restrictions,
-        )
-    except AIError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    targets = calculate_targets_local(
+        payload.age,
+        payload.weight_kg,
+        payload.height_cm,
+        payload.goal,
+        payload.gender,
+    )
 
     user = User(
         auth_id=auth_id,

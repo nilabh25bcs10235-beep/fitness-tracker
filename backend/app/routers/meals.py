@@ -13,6 +13,7 @@ from ..schemas import MealCreate, MealResponse, MealAnalysis
 from ..data.food_catalog import search_foods
 from ..llm.groq_client import estimate_meal_from_text, analyze_meal_image, AIError
 from ..services.health_scorer import score_meal_health
+from ..services.ai_cache import get_cached, set_cached
 
 router = APIRouter(prefix="/api/meals", tags=["meals"])
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "uploads")
@@ -50,8 +51,21 @@ def analyze_text(
     description: str,
     user: User = Depends(get_user_profile),
 ):
+    text = description.strip()
+    if len(text) < 3:
+        raise HTTPException(status_code=400, detail="Description too short to analyze.")
+
+    cache_payload = {
+        "description": text.lower(),
+        "restrictions": (user.dietary_restrictions or "").lower(),
+    }
+    cached = get_cached("meal_text", cache_payload)
+    if cached:
+        return _to_meal_analysis(cached)
+
     try:
-        result = estimate_meal_from_text(description, user.dietary_restrictions)
+        result = estimate_meal_from_text(text, user.dietary_restrictions)
+        set_cached("meal_text", cache_payload, result, ttl=86400)
         return _to_meal_analysis(result)
     except AIError as e:
         raise HTTPException(status_code=503, detail=str(e))

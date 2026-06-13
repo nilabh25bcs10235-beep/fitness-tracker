@@ -66,22 +66,40 @@ export default function MealLogger({ meals, onRefresh }) {
   const [lastHealthScore, setLastHealthScore] = useState(null);
   const suggestRef = useRef(null);
   const analyzeRef = useRef(null);
+  const analyzeAbortRef = useRef(null);
+  const lastAnalyzedRef = useRef('');
   const inputRef = useRef(null);
 
   const runAnalysis = async (text) => {
-    if (!text.trim() || text.trim().length < 2) {
+    const trimmed = text.trim();
+    if (trimmed.length < 4) {
       setAnalysis(null);
       return;
     }
+    if (trimmed === lastAnalyzedRef.current) return;
+
+    if (analyzeAbortRef.current) {
+      analyzeAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    analyzeAbortRef.current = controller;
+
     setAnalyzing(true);
     setError('');
     try {
-      const result = await api.analyzeText(text.trim());
-      setAnalysis(result);
+      const result = await api.analyzeText(trimmed, { signal: controller.signal });
+      if (!controller.signal.aborted) {
+        lastAnalyzedRef.current = trimmed;
+        setAnalysis(result);
+      }
     } catch (e) {
-      setError(e.message);
+      if (e.name !== 'AbortError' && !controller.signal.aborted) {
+        setError(e.message);
+      }
     } finally {
-      setAnalyzing(false);
+      if (!controller.signal.aborted) {
+        setAnalyzing(false);
+      }
     }
   };
 
@@ -92,6 +110,7 @@ export default function MealLogger({ meals, onRefresh }) {
     if (description.trim().length < 2) {
       setSuggestions([]);
       setAnalysis(null);
+      lastAnalyzedRef.current = '';
       return;
     }
 
@@ -103,11 +122,13 @@ export default function MealLogger({ meals, onRefresh }) {
       } catch {
         setSuggestions([]);
       }
-    }, 200);
+    }, 350);
 
-    analyzeRef.current = setTimeout(() => {
-      runAnalysis(description);
-    }, 800);
+    if (description.trim().length >= 4) {
+      analyzeRef.current = setTimeout(() => {
+        runAnalysis(description);
+      }, 1400);
+    }
 
     return () => {
       if (suggestRef.current) clearTimeout(suggestRef.current);

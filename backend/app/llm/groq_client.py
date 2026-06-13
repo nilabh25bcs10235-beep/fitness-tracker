@@ -56,7 +56,7 @@ def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:
                 {"role": "user", "content": user},
             ],
             temperature=0.4,
-            max_tokens=1500,
+            max_tokens=900,
             response_format={"type": "json_object"},
         )
         return json.loads(response.choices[0].message.content)

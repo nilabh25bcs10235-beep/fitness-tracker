@@ -208,6 +208,17 @@ class ProgressDashboard(BaseModel):
     body_composition: dict
 
 
+class HydrationLogResponse(BaseModel):
+    hydration: HydrationTodayResponse
+    weekly_tracker: WeeklyTrackerResponse
+
+
+class BootstrapResponse(BaseModel):
+    dashboard: ProgressDashboard
+    weekly_tracker: WeeklyTrackerResponse
+    hydration: HydrationTodayResponse
+
+
 class RecipeItem(BaseModel):
     name: str
     description: str

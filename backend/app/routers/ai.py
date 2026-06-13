@@ -15,6 +15,7 @@ from ..schemas import (
     CalorieBurnRequest,
     CalorieBurnResponse,
 )
+from ..data.exercise_templates import get_template
 from ..llm.groq_client import (
     get_smart_insight,
     analyze_body_image,
@@ -22,6 +23,8 @@ from ..llm.groq_client import (
     estimate_calorie_burn,
     AIError,
 )
+from ..services.ai_cache import get_cached, set_cached
+from ..services.nutrition_math import estimate_calorie_burn_local
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -55,10 +58,21 @@ def get_insight(
         "meals_logged": len(today_meals),
     }
 
-    try:
-        result = get_smart_insight(payload.query, _user_context(user), today_macros)
-    except AIError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    ctx = _user_context(user)
+    cache_payload = {
+        "query": payload.query.strip().lower(),
+        "macros": today_macros,
+        "goal": user.goal,
+    }
+    cached = get_cached("insight", cache_payload)
+    if cached:
+        result = cached
+    else:
+        try:
+            result = get_smart_insight(payload.query, ctx, today_macros)
+            set_cached("insight", cache_payload, result, ttl=1800)
+        except AIError as e:
+            raise HTTPException(status_code=503, detail=str(e))
 
     return InsightResponse(
         answer=result.get("answer", ""),
@@ -95,13 +109,24 @@ def get_exercises(
     body_part: str,
     user: User = Depends(get_user_profile),
 ):
-    if not body_part.strip():
+    part = body_part.strip()
+    if not part:
         raise HTTPException(status_code=400, detail="body_part is required")
 
-    try:
-        result = get_exercise_plan(body_part.strip(), _user_context(user))
-    except AIError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    template = get_template(part)
+    if template:
+        result = template
+    else:
+        cache_payload = {"body_part": part.lower(), "goal": user.goal}
+        cached = get_cached("exercises", cache_payload)
+        if cached:
+            result = cached
+        else:
+            try:
+                result = get_exercise_plan(part, _user_context(user))
+                set_cached("exercises", cache_payload, result, ttl=86400)
+            except AIError as e:
+                raise HTTPException(status_code=503, detail=str(e))
 
     exercises = [ExerciseItem(**e) for e in result.get("exercises", [])]
     return ExercisePlanResponse(
@@ -117,15 +142,35 @@ def calorie_burn(
     payload: CalorieBurnRequest,
     user: User = Depends(get_user_profile),
 ):
-    try:
-        result = estimate_calorie_burn(
-            payload.activity,
-            payload.duration_min,
-            payload.intensity,
-            _user_context(user),
-        )
-    except AIError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+    local = estimate_calorie_burn_local(
+        payload.activity,
+        payload.duration_min,
+        payload.intensity,
+        user.weight_kg,
+    )
+    if local:
+        result = local
+    else:
+        cache_payload = {
+            "activity": payload.activity.strip().lower(),
+            "duration": payload.duration_min,
+            "intensity": payload.intensity,
+            "weight": round(user.weight_kg),
+        }
+        cached = get_cached("calorie_burn", cache_payload)
+        if cached:
+            result = cached
+        else:
+            try:
+                result = estimate_calorie_burn(
+                    payload.activity,
+                    payload.duration_min,
+                    payload.intensity,
+                    _user_context(user),
+                )
+                set_cached("calorie_burn", cache_payload, result, ttl=86400)
+            except AIError as e:
+                raise HTTPException(status_code=503, detail=str(e))
 
     return CalorieBurnResponse(
         activity=result.get("activity", payload.activity),

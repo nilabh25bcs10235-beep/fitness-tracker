@@ -12,8 +12,8 @@ export default function HydrationPlan({ data, onUpdate }) {
     setLogging(true);
     setSplashing(true);
     try {
-      const next = await api.logWater({ amount_ml: data.glass_size_ml });
-      onUpdate?.(next);
+      const res = await api.logWater({ amount_ml: data.glass_size_ml });
+      onUpdate?.(res);
     } finally {
       setLogging(false);
       setTimeout(() => setSplashing(false), 900);

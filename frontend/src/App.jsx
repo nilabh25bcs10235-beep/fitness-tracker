@@ -45,16 +45,12 @@ export default function App() {
   const mealsLoadedRef = useRef(false);
   const recipesLoadedRef = useRef(false);
 
-  const refreshCore = useCallback(async () => {
-    const [dash, tracker, hyd] = await Promise.all([
-      api.getDashboard(),
-      api.getWeeklyTracker(),
-      api.getHydrationToday(),
-    ]);
-    setDashboard(dash);
-    setWeeklyTracker(tracker);
-    setHydration(hyd);
-    setUser(dash.user);
+  const refreshCore = useCallback(async (force = false) => {
+    const boot = await api.getBootstrap(force);
+    setDashboard(boot.dashboard);
+    setWeeklyTracker(boot.weekly_tracker);
+    setHydration(boot.hydration);
+    setUser(boot.dashboard.user);
   }, []);
 
   const refreshMeals = useCallback(async () => {
@@ -64,12 +60,12 @@ export default function App() {
   }, []);
 
   const refresh = useCallback(async () => {
-    await refreshCore();
+    await refreshCore(true);
     if (mealsLoadedRef.current || displayTab === 'meals') {
       await refreshMeals();
     }
     if (recipesLoadedRef.current) {
-      const recipePlan = await api.getRecipes();
+      const recipePlan = await api.getRecipes(true);
       setRecipes(recipePlan);
     }
   }, [refreshCore, refreshMeals, displayTab]);
@@ -216,10 +212,17 @@ export default function App() {
     refreshCore();
   };
 
-  const handleHydrationUpdate = useCallback(async (hyd) => {
-    setHydration(hyd);
-    const tracker = await api.getWeeklyTracker();
-    setWeeklyTracker(tracker);
+  const handleHydrationUpdate = useCallback((res) => {
+    setHydration(res.hydration);
+    setWeeklyTracker(res.weekly_tracker);
+    setDashboard((prev) =>
+      prev
+        ? {
+            ...prev,
+            today: { ...prev.today, water_consumed_ml: res.hydration.consumed_ml },
+          }
+        : prev,
+    );
   }, []);
 
   const activeTheme = TABS.find((t) => t.id === displayTab)?.theme || 'dashboard';
