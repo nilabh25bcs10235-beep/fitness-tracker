@@ -177,6 +177,8 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
       signalPulse(el.getBoundingClientRect(), numeric ? 0.65 : 0.45);
     };
     const onFocusOut = (e) => {
+      const next = e.relatedTarget;
+      if (next?.matches?.('input, textarea, select')) return;
       if (e.target?.matches?.('input, textarea, select') && !e.target.classList?.contains('reactive-input')) {
         signalBlur();
       }

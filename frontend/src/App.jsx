@@ -10,6 +10,7 @@ import VitalityBackground from './components/vitality/VitalityBackground';
 import VitalityIntensityControl from './components/vitality/VitalityIntensityControl';
 import ScreenBrightnessControl from './components/vitality/ScreenBrightnessControl';
 import VortexTransition from './components/VortexTransition';
+import { DEV_BYPASS_AUTH, DEV_BOOTSTRAP, DEV_USER } from './lib/devBypass';
 
 function AppRoot({ className = '', children }) {
   const { brightness } = useDisplay();
@@ -39,21 +40,21 @@ function TabFallback() {
 }
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [authReady, setAuthReady] = useState(!supabaseConfigured);
-  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(DEV_BYPASS_AUTH ? { user: { email: DEV_USER.email } } : null);
+  const [authReady, setAuthReady] = useState(DEV_BYPASS_AUTH || !supabaseConfigured);
+  const [user, setUser] = useState(DEV_BYPASS_AUTH ? DEV_USER : null);
   const [tab, setTab] = useState('dashboard');
   const [displayTab, setDisplayTab] = useState('dashboard');
-  const [dashboard, setDashboard] = useState(null);
-  const [weeklyTracker, setWeeklyTracker] = useState(null);
-  const [hydration, setHydration] = useState(null);
+  const [dashboard, setDashboard] = useState(DEV_BYPASS_AUTH ? DEV_BOOTSTRAP.dashboard : null);
+  const [weeklyTracker, setWeeklyTracker] = useState(DEV_BYPASS_AUTH ? DEV_BOOTSTRAP.weekly_tracker : null);
+  const [hydration, setHydration] = useState(DEV_BYPASS_AUTH ? DEV_BOOTSTRAP.hydration : null);
   const [meals, setMeals] = useState([]);
   const [recipes, setRecipes] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showVortex, setShowVortex] = useState(false);
-  const [appVisible, setAppVisible] = useState(false);
+  const [appVisible, setAppVisible] = useState(DEV_BYPASS_AUTH);
   const vortexTriggeredRef = useRef(false);
   const mealsLoadedRef = useRef(false);
   const recipesLoadedRef = useRef(false);
@@ -112,7 +113,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!supabaseConfigured) return undefined;
+    if (DEV_BYPASS_AUTH || !supabaseConfigured) return undefined;
 
     const isAuthCallback = () => {
       const { hash, search } = window.location;
@@ -154,7 +155,7 @@ export default function App() {
   }, [triggerVortex]);
 
   useEffect(() => {
-    if (!session) return undefined;
+    if (DEV_BYPASS_AUTH || !session) return undefined;
 
     let cancelled = false;
     (async () => {

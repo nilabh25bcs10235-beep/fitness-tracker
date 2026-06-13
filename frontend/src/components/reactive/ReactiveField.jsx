@@ -29,7 +29,10 @@ export default function ReactiveField({
 
   const handleBlur = (e) => {
     onBlur();
-    signalBlur();
+    const next = e.relatedTarget;
+    if (!next?.matches?.('input, textarea, select')) {
+      signalBlur();
+    }
     onBlurProp?.(e);
   };
 

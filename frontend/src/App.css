@@ -2126,6 +2126,14 @@ button.chip:active {
   overflow: hidden;
 }
 
+.vitality-reactive-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
 .vitality-base {
   position: absolute;
   inset: 0;
