@@ -338,7 +338,7 @@ export default function App() {
                   />
                 )}
                 {displayTab === 'meals' && (
-                  <MealLogger meals={meals} onRefresh={refresh} />
+                  <MealLogger meals={meals} onRefresh={refresh} user={user} />
                 )}
                 {displayTab === 'workouts' && (
                   <Workouts onRefresh={refresh} />
@@ -346,7 +346,7 @@ export default function App() {
                 {displayTab === 'recipes' && (
                   <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
                 )}
-                {displayTab === 'ai' && <AIInsights />}
+                {displayTab === 'ai' && <AIInsights user={user} />}
               </Suspense>
             </div>
           </div>

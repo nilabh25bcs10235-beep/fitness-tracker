@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
+import { analyzeBodyImageVision } from '../lib/visionAnalysis';
 import ReactiveField from './reactive/ReactiveField';
 
 const QUICK_PROMPTS = [
@@ -20,7 +21,19 @@ function formatWhen(iso) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-export default function AIInsights() {
+function buildUserContext(user) {
+  if (!user) return {};
+  return {
+    age: user.age,
+    weight_kg: user.weight_kg,
+    height_cm: user.height_cm,
+    gender: user.gender,
+    goal: user.goal,
+    dietary_restrictions: user.dietary_restrictions,
+  };
+}
+
+export default function AIInsights({ user }) {
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [conversations, setConversations] = useState([]);
@@ -166,7 +179,7 @@ export default function AIInsights() {
     if (!file) return;
     setBodyLoading(true);
     try {
-      const res = await api.analyzeBodyImage(file);
+      const res = await analyzeBodyImageVision(file, buildUserContext(user));
       setBodyResult(res);
     } catch (err) {
       setBodyResult({ nutritional_advice: err.message, goal_recommendations: [] });

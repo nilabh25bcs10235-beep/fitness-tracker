@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
+import { analyzeMealImageVision } from '../lib/visionAnalysis';
 import { HEALTH_LABELS, healthScoreClass } from '../lib/healthScore';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
@@ -57,7 +58,7 @@ function MacroAnalysis({ analysis }) {
   );
 }
 
-export default function MealLogger({ meals, onRefresh }) {
+export default function MealLogger({ meals, onRefresh, user }) {
   const [description, setDescription] = useState('');
   const [mealType, setMealType] = useState('lunch');
   const [analysis, setAnalysis] = useState(null);
@@ -198,7 +199,7 @@ export default function MealLogger({ meals, onRefresh }) {
     setLoading(true);
     setError('');
     try {
-      const result = await api.analyzeMealImage(file, mealType);
+      const result = await analyzeMealImageVision(file, user?.dietary_restrictions);
       setAnalysis(result);
       setDescription(result.description || result.name);
     } catch (err) {
@@ -271,7 +272,7 @@ export default function MealLogger({ meals, onRefresh }) {
             <div style={{ fontSize: '2rem' }}>📷</div>
             <p>Upload meal photo for AI vision analysis</p>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              AI vision estimates calories, macros & micronutrients
+              AI vision (Puter.js) estimates calories, macros & micronutrients
             </p>
           </label>
         </div>

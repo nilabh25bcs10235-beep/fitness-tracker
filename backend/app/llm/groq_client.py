@@ -116,6 +116,7 @@ def _vision_json(
     *,
     max_tokens: int = 1000,
 ) -> Dict:
+    """Server fallback for vision — primary path is Puter.js in the browser."""
     _require_ai()
     groq_error: Optional[Exception] = None
     b64 = base64.b64encode(image_bytes).decode("utf-8")
