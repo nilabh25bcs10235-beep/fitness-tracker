@@ -35,7 +35,23 @@ body {
   position: relative;
   min-height: 100vh;
   opacity: 1;
-  transition: opacity 0.8s ease 0.2s;
+  transition: opacity 0.8s ease 0.2s, filter 0.35s ease;
+}
+
+.app-root[data-brightness="soft"] {
+  filter: brightness(0.86);
+}
+
+.app-root[data-brightness="normal"] {
+  filter: brightness(1);
+}
+
+.app-root[data-brightness="bright"] {
+  filter: brightness(1.1);
+}
+
+.app-root[data-brightness="vivid"] {
+  filter: brightness(1.22) contrast(1.03);
 }
 
 .app-root.app-entering {
@@ -2171,11 +2187,27 @@ button.chip:active {
   50% { text-shadow: 0 0 48px rgba(34, 211, 238, 0.22); }
 }
 
-.vitality-toggle {
+.vitality-toggle,
+.display-toggle {
   font-size: 0.78rem !important;
   padding: 0.4rem 0.7rem !important;
   gap: 0.4rem;
   color: var(--muted);
+}
+
+.display-toggle-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.display-toggle-icon[data-level="vivid"] {
+  color: #fde68a;
+  text-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
+}
+
+.display-toggle-icon[data-level="soft"] {
+  opacity: 0.55;
 }
 
 .vitality-toggle-dot {
@@ -2217,6 +2249,11 @@ button.chip:active {
   }
   .vitality-toggle {
     display: none;
+  }
+
+  .display-toggle {
+    font-size: 0.72rem !important;
+    padding: 0.35rem 0.5rem !important;
   }
   .week-pills {
     grid-template-columns: repeat(4, 1fr);
