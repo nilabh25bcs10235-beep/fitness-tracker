@@ -70,6 +70,11 @@ def _decode_token(token: str) -> dict:
 
 def verify_supabase_token(authorization: Optional[str] = Header(default=None)) -> str:
     """Return Supabase auth user id (JWT sub claim)."""
+    from .dev_bypass import DEV_AUTH_ID, DEV_BYPASS_AUTH
+
+    if DEV_BYPASS_AUTH:
+        return DEV_AUTH_ID
+
     if not auth_enabled():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

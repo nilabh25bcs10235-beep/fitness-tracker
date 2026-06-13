@@ -1,4 +1,11 @@
 import os
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -68,6 +75,8 @@ if os.getenv("YT_KEY"):
     print("✅ YT_KEY detected — YouTube demo videos enabled")
 else:
     print("ℹ️  YT_KEY not set — exercise/recipe videos use AI or static IDs only")
+if os.getenv("DEV_BYPASS_AUTH", "").lower() == "true":
+    print("⚠️  DEV_BYPASS_AUTH=true — auth disabled for local development only")
 
 _default_origins = "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
 _allowed_origins = [
