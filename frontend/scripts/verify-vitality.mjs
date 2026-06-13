@@ -16,8 +16,8 @@ function pass(msg) {
   console.log(`PASS: ${msg}`);
 }
 
-async function canvasEnergy(page, selector = '.vitality-canvas') {
-  return page.evaluate((sel) => {
+async function canvasEnergy(page, selector = '.vitality-canvas', { minAlpha = 8, minRgb = 30 } = {}) {
+  return page.evaluate(({ sel, minAlpha, minRgb }) => {
     const canvas = document.querySelector(sel);
     if (!canvas) return 0;
     const ctx = canvas.getContext('2d');
@@ -25,12 +25,12 @@ async function canvasEnergy(page, selector = '.vitality-canvas') {
     if (!width || !height) return 0;
     const data = ctx.getImageData(0, 0, width, height).data;
     let bright = 0;
-    for (let i = 0; i < data.length; i += 16) {
+    for (let i = 0; i < data.length; i += 12) {
       const a = data[i + 3];
-      if (a > 8 && (data[i] + data[i + 1] + data[i + 2]) > 30) bright += 1;
+      if (a > minAlpha && (data[i] + data[i + 1] + data[i + 2]) > minRgb) bright += 1;
     }
     return bright;
-  }, selector);
+  }, { sel: selector, minAlpha, minRgb });
 }
 
 async function main() {
@@ -98,20 +98,20 @@ async function main() {
   else {
     await workoutInput.click();
     await page.waitForTimeout(400);
-    const energyFocusOnly = await canvasEnergy(page, '.vitality-reactive-canvas');
+    const energyFocusOnly = await canvasEnergy(page, '.vitality-reactive-canvas', { minAlpha: 1, minRgb: 1 });
     if (energyFocusOnly > 1200) {
       fail(`Layer 3: persistent focus halo on reactive canvas (${energyFocusOnly})`);
     } else {
       pass(`Layer 3: no sunray/halo on focus alone (${energyFocusOnly})`);
     }
 
-    await workoutInput.type('heavy PR 225', { delay: 40 });
-    await page.waitForTimeout(600);
-    const energyType = await canvasEnergy(page, '.vitality-reactive-canvas');
-    if (energyType <= energyFocusOnly + 50) {
+    await workoutInput.type('heavy PR 225', { delay: 35 });
+    await page.waitForTimeout(900);
+    const energyType = await canvasEnergy(page, '.vitality-reactive-canvas', { minAlpha: 1, minRgb: 1 });
+    if (energyType <= energyFocusOnly + 1) {
       fail(`Layer 3: typing did not increase reactive energy (${energyFocusOnly} -> ${energyType})`);
     } else {
-      pass(`Layer 3: typing ripples detected (${energyFocusOnly} -> ${energyType})`);
+      pass(`Layer 3: subtle typing ripples detected (${energyFocusOnly} -> ${energyType})`);
     }
 
     const focusQuote = await page.$('.vitality-quote.focus.visible');

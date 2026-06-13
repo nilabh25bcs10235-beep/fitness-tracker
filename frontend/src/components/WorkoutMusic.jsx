@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { youtubePlaylistEmbedUrl } from '../lib/youtube';
 import ReactiveField from './reactive/ReactiveField';
 
 const SUGGESTED_QUERIES = [
@@ -13,6 +14,7 @@ const SUGGESTED_QUERIES = [
 export default function WorkoutMusic() {
   const [query, setQuery] = useState('gym workout playlist');
   const [playlists, setPlaylists] = useState([]);
+  const [active, setActive] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [unavailable, setUnavailable] = useState(false);
@@ -47,17 +49,45 @@ export default function WorkoutMusic() {
     return (
       <div className="card card-lively workout-music-card">
         <h2>Workout Music</h2>
-        <p className="muted-note">YouTube playlists will appear here once YT_KEY is configured on the server.</p>
+        <p className="muted-note">In-app playlists will appear once YT_KEY is configured on the server.</p>
       </div>
     );
   }
 
+  const embedSrc = active ? youtubePlaylistEmbedUrl(active.id, true) : null;
+
   return (
     <div className="card card-lively workout-music-card">
       <h2>Workout Music</h2>
-      <p className="muted-note">
-        Browse workout playlists and open them in YouTube Music for background play.
-      </p>
+      <p className="muted-note">Stream workout playlists here — no need to leave the app.</p>
+
+      {active && embedSrc && (
+        <div className="workout-music-player glass-card">
+          <div className="workout-music-player-header">
+            <div>
+              <p className="workout-music-now">Now playing</p>
+              <h4>{active.title}</h4>
+              {active.channel && <p className="muted-note">{active.channel}</p>}
+            </div>
+            <button
+              type="button"
+              className="btn-icon"
+              onClick={() => setActive(null)}
+              aria-label="Stop music"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="workout-music-embed">
+            <iframe
+              title={active.title}
+              src={embedSrc}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       <div className="chip-row workout-music-chips">
         {SUGGESTED_QUERIES.map((term) => (
@@ -98,27 +128,29 @@ export default function WorkoutMusic() {
 
       <div className="workout-music-grid">
         {playlists.map((pl) => (
-          <div key={pl.id} className="workout-music-item glass-card">
+          <button
+            key={pl.id}
+            type="button"
+            className={`workout-music-item glass-card ${active?.id === pl.id ? 'is-playing' : ''}`}
+            onClick={() => setActive(pl)}
+          >
             <div className="workout-music-thumb-wrap">
               {pl.thumbnail_url ? (
                 <img src={pl.thumbnail_url} alt="" className="workout-music-thumb" loading="lazy" />
               ) : (
                 <div className="workout-music-thumb workout-music-thumb-fallback" />
               )}
-              <span className="workout-music-thumb-badge">Playlist</span>
+              <span className="workout-music-thumb-play" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </span>
             </div>
             <div className="workout-music-meta">
               <h4>{pl.title}</h4>
               {pl.channel && <p className="muted-note">{pl.channel}</p>}
-              <button
-                type="button"
-                className="btn btn-glow btn-sm"
-                onClick={() => window.open(`https://music.youtube.com/playlist?list=${pl.id}`, '_blank', 'noopener,noreferrer')}
-              >
-                Play in YouTube Music
-              </button>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 

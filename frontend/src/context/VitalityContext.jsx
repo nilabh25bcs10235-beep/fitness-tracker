@@ -122,16 +122,16 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
     setTypingEnergy((prev) => Math.min(1, prev + (isNum ? 0.26 : 0.18)));
   }, []);
 
-  const signalPulse = useCallback((rect, strength = 0.6) => {
+  const signalPulse = useCallback((rect, strength = 0.35) => {
     if (!rect) return;
     const entry = {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
-      strength: Math.min(1, strength * (powerRef.current ? 1.35 : 1)),
+      strength: Math.min(0.55, strength * (powerRef.current ? 1.15 : 1)),
       warm: powerRef.current,
       t: Date.now(),
     };
-    setPulses((prev) => [...prev.slice(-7), entry]);
+    setPulses((prev) => [...prev.slice(-3), entry]);
   }, []);
 
   const signalSuccess = useCallback((area = 'default', rect = null) => {
@@ -182,7 +182,7 @@ export function VitalityProvider({ context = 'dashboard', tracker = null, childr
       if (el.classList?.contains('reactive-input')) return;
       const numeric = el.type === 'number';
       signalTyping(el.value, null, { numeric });
-      signalPulse(el.getBoundingClientRect(), numeric ? 0.65 : 0.45);
+      signalPulse(el.getBoundingClientRect(), numeric ? 0.38 : 0.28);
     };
     const onFocusOut = (e) => {
       const next = e.relatedTarget;

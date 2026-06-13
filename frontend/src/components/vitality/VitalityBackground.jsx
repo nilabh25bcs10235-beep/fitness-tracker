@@ -5,15 +5,11 @@ import {
   THEME_HUE,
   WARM_HUE,
   drawPulses,
-  drawSuccessWave,
-  focusFlowStrength,
   lerpHue,
-  vitalityEnergy,
 } from './vitalityDraw';
 
 const NODE_COUNT = 62;
 const CONNECT_DIST = 135;
-const FLOW_DIST = 260;
 
 const THEME_SPEED = {
   dashboard: 0.75,
@@ -111,10 +107,7 @@ function VitalityAmbientCanvas() {
     const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
     const warmMix = s.powerMode ? 0.55 : 0;
     const [hr, hg, hb] = lerpHue(baseHue, WARM_HUE, warmMix);
-    const energy = vitalityEnergy(s);
-    const flow = focusFlowStrength(s);
     const now = Date.now();
-    const focus = s.focusPoint;
 
     if (nodesRef.current.length === 0) {
       nodesRef.current = createNodes(width, height);
@@ -133,19 +126,7 @@ function VitalityAmbientCanvas() {
     nodes.forEach((n) => {
       const wave = Math.sin(n.phase + now / (calm > 0.9 ? 2200 : 3200)) * 0.04;
       n.phase += 0.004 * themeSpeed;
-
-      if (focus && flow > 0.05) {
-        const dx = focus.x - n.x;
-        const dy = focus.y - n.y;
-        const dist = Math.hypot(dx, dy) || 1;
-        const pull = 0.00085 * flow * (1 + (s.powerMode ? 0.85 : 0)) * calm;
-        n.vx += (dx / dist) * pull;
-        n.vy += (dy / dist) * pull * 0.65;
-        if (dist < FLOW_DIST) n.glow = Math.min(1, n.glow + 0.08 * flow);
-        else n.glow = Math.max(0, n.glow - 0.018);
-      } else {
-        n.glow = Math.max(0, n.glow - 0.014);
-      }
+      n.glow = Math.max(0, n.glow - 0.014);
 
       n.vy += (-0.018 - wave) * themeSpeed;
       n.vx += wave * 0.28;
@@ -162,24 +143,6 @@ function VitalityAmbientCanvas() {
       if (n.x > width + 20) n.x = -20;
     });
 
-    if (focus && flow > 0.08) {
-      const nearby = nodes
-        .map((n) => ({ n, d: Math.hypot(n.x - focus.x, n.y - focus.y) }))
-        .filter(({ d }) => d < FLOW_DIST)
-        .sort((a, b) => a.d - b.d)
-        .slice(0, 14);
-
-      nearby.forEach(({ n, d }) => {
-        const alpha = baseAlpha * (1 - d / FLOW_DIST) * (0.35 + flow * 0.65);
-        ctx.strokeStyle = `rgba(${hr}, ${hg}, ${hb}, ${alpha})`;
-        ctx.lineWidth = 0.5 + energy * 0.6;
-        ctx.beginPath();
-        ctx.moveTo(n.x, n.y);
-        ctx.lineTo(focus.x, focus.y);
-        ctx.stroke();
-      });
-    }
-
     for (let i = 0; i < nodes.length; i += 1) {
       for (let j = i + 1; j < nodes.length; j += 1) {
         const a = nodes[i];
@@ -189,17 +152,9 @@ function VitalityAmbientCanvas() {
         const dist = Math.hypot(dx, dy);
         if (dist > CONNECT_DIST) continue;
 
-        let lineBoost = 0.5 + energy * 0.55;
-        if (focus && flow > 0.08) {
-          const midX = (a.x + b.x) / 2;
-          const midY = (a.y + b.y) / 2;
-          const fd = Math.hypot(midX - focus.x, midY - focus.y);
-          if (fd < FLOW_DIST) lineBoost += (1 - fd / FLOW_DIST) * 0.4 * flow;
-        }
-
-        const lineAlpha = baseAlpha * (1 - dist / CONNECT_DIST) * lineBoost;
+        const lineAlpha = baseAlpha * (1 - dist / CONNECT_DIST) * 0.5;
         ctx.strokeStyle = `rgba(${hr}, ${hg}, ${hb}, ${lineAlpha})`;
-        ctx.lineWidth = 0.55 + energy * 0.5 + (s.powerMode ? 0.25 : 0);
+        ctx.lineWidth = 0.55;
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
@@ -208,7 +163,7 @@ function VitalityAmbientCanvas() {
     }
 
     nodes.forEach((n) => {
-      const nodeAlpha = baseAlpha * (1.15 + n.glow * 0.95 + energy * 0.35);
+      const nodeAlpha = baseAlpha * (1.15 + n.glow * 0.95);
       const glow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.size * 4);
       glow.addColorStop(0, `rgba(${hr}, ${hg}, ${hb}, ${nodeAlpha})`);
       glow.addColorStop(1, `rgba(${hr}, ${hg}, ${hb}, 0)`);
@@ -217,28 +172,6 @@ function VitalityAmbientCanvas() {
       ctx.arc(n.x, n.y, n.size * 3, 0, Math.PI * 2);
       ctx.fill();
     });
-
-    if (s.successWave && now - s.successWave < 1800) {
-      const age = (now - s.successWave) / 1800;
-      const rect = s.successRect;
-      const waveY = rect
-        ? rect.bottom - (rect.bottom - rect.top) * age
-        : height * (1 - age * 0.85);
-
-      nodes.forEach((n) => {
-        if (rect) {
-          if (
-            n.x >= rect.left - 20 &&
-            n.x <= rect.right + 20 &&
-            Math.abs(n.y - waveY) < 70
-          ) {
-            n.glow = Math.min(1, n.glow + 0.12 * (1 - age));
-          }
-        } else if (Math.abs(n.y - waveY) < 65) {
-          n.glow = Math.min(1, n.glow + 0.1);
-        }
-      });
-    }
   };
 
   const canvasRef = useVitalityCanvas(drawRef);
@@ -258,8 +191,7 @@ function VitalityReactiveCanvas() {
     const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
     const now = Date.now();
 
-    drawPulses(ctx, s, { baseHue, scale, now });
-    drawSuccessWave(ctx, s, { scale, width, height, now });
+    drawPulses(ctx, s, { baseHue, scale, now, width, height });
   };
 
   const canvasRef = useVitalityCanvas(drawRef);

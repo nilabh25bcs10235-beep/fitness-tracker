@@ -42,8 +42,8 @@ export default function ReactiveField({
     onChange?.(e);
     signalTyping(e.target.value, theme, { numeric: isNumeric });
     if (shellRef.current) {
-      const base = isNumeric ? 0.5 : 0.38;
-      signalPulse(shellRef.current.getBoundingClientRect(), base + intensity * (isNumeric ? 0.5 : 0.42));
+      const base = isNumeric ? 0.32 : 0.24;
+      signalPulse(shellRef.current.getBoundingClientRect(), base + intensity * (isNumeric ? 0.22 : 0.18));
     }
   };
 

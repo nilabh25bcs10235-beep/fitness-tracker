@@ -32,3 +32,14 @@ export function youtubeEmbedUrl(videoId, autoplay = true) {
   });
   return `https://www.youtube.com/embed/${id}?${params}`;
 }
+
+export function youtubePlaylistEmbedUrl(playlistId, autoplay = true) {
+  if (!playlistId) return null;
+  const params = new URLSearchParams({
+    list: playlistId,
+    autoplay: autoplay ? '1' : '0',
+    rel: '0',
+    modestbranding: '1',
+  });
+  return `https://www.youtube.com/embed/videoseries?${params}`;
+}
