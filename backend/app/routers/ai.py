@@ -32,6 +32,7 @@ from ..llm.groq_client import (
 )
 from ..services.ai_cache import get_cached, set_cached
 from ..services.nutrition_math import estimate_calorie_burn_local
+from ..services.youtube_search import enrich_items_with_videos
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -164,6 +165,7 @@ def get_exercises(
         raise HTTPException(status_code=400, detail="body_part is required")
 
     template = get_template(part)
+    used_template = bool(template)
     if template:
         result = template
     else:
@@ -178,7 +180,10 @@ def get_exercises(
             except AIError as e:
                 raise HTTPException(status_code=503, detail=str(e))
 
-    exercises = [ExerciseItem(**e) for e in result.get("exercises", [])]
+    raw_exercises = result.get("exercises", [])
+    if not used_template:
+        raw_exercises = enrich_items_with_videos(raw_exercises, kind="exercise")
+    exercises = [ExerciseItem(**e) for e in raw_exercises]
     return ExercisePlanResponse(
         body_part=result.get("body_part", body_part),
         exercises=exercises,

@@ -64,6 +64,10 @@ if os.getenv("GEMINI_API_KEY"):
     print("✅ GEMINI_API_KEY detected — Gemini fallback enabled")
 else:
     print("ℹ️  GEMINI_API_KEY not set — no Gemini fallback")
+if os.getenv("YT_KEY"):
+    print("✅ YT_KEY detected — YouTube demo videos enabled")
+else:
+    print("ℹ️  YT_KEY not set — exercise/recipe videos use AI or static IDs only")
 
 _default_origins = "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
 _allowed_origins = [

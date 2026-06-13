@@ -24,6 +24,7 @@ from ..services.meal_plan_store import (
     _loads,
     _dumps,
 )
+from ..services.youtube_search import enrich_items_with_videos
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -78,7 +79,7 @@ def generate_plan(
     except AIError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
-    recipes = result.get("recipes", [])
+    recipes = enrich_items_with_videos(result.get("recipes", []), kind="recipe")
     if not recipes:
         raise HTTPException(status_code=503, detail="AI returned no recipes. Try again.")
 
