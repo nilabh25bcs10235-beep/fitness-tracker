@@ -18,7 +18,7 @@ except ImportError:
 # Reads from environment variable (Render, Vercel, Railway, etc.)
 # The variable must be named exactly GROQ_API_KEY
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.3-70b-versatile")
+TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.1-8b-instant")
 VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
 
 client = None

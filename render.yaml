@@ -13,7 +13,7 @@ services:
       - key: GROQ_API_KEY
         sync: false
       - key: GROQ_TEXT_MODEL
-        value: llama-3.3-70b-versatile
+        value: llama-3.1-8b-instant
       - key: GROQ_VISION_MODEL
         value: llama-3.2-90b-vision-preview
       - key: DATABASE_URL
