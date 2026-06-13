@@ -8,15 +8,15 @@ export default function HydrationPlan({ data, onUpdate }) {
   const [logging, setLogging] = useState(false);
   const [splashing, setSplashing] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-  const { signalSuccess } = useVitality();
+  const { signalSuccessFromElement } = useVitality();
 
   if (!data) return null;
 
-  const logGlass = async () => {
+  const logGlass = async (triggerEl) => {
     setLogging(true);
     setSplashing(true);
     setCelebrate(true);
-    signalSuccess('water');
+    signalSuccessFromElement('water', triggerEl);
     try {
       const res = await api.logWater({ amount_ml: data.glass_size_ml });
       onUpdate?.(res);
@@ -72,7 +72,7 @@ export default function HydrationPlan({ data, onUpdate }) {
       <button
         type="button"
         className={`btn btn-glow hydration-log-btn ${logging ? 'logging' : ''}`}
-        onClick={logGlass}
+        onClick={(e) => logGlass(e.currentTarget)}
         disabled={logging}
       >
         <span className="hydration-btn-icon">🥤</span>

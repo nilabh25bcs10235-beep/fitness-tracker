@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { computeCalmMode, cardRectFromElement } from '../lib/vitalityConsistency';
 import {
   detectPowerWords,
   FOCUS_QUOTES,
@@ -19,6 +20,7 @@ import {
 const VitalityContext = createContext(null);
 
 const INTENSITY_KEY = 'fittrack-vitality-intensity';
+const NUMERIC_PATTERN = /^\d+\.?\d*$/;
 
 function loadIntensity() {
   try {
@@ -32,17 +34,22 @@ function loadIntensity() {
 
 const INTENSITY_SCALE = { off: 0, low: 0.55, medium: 1, high: 1.35 };
 
-export function VitalityProvider({ context = 'dashboard', children }) {
+export function VitalityProvider({ context = 'dashboard', tracker = null, children }) {
   const [intensity, setIntensityState] = useState(loadIntensity);
   const [focusPoint, setFocusPoint] = useState(null);
   const [typingEnergy, setTypingEnergy] = useState(0);
+  const [numericTyping, setNumericTyping] = useState(false);
   const [powerMode, setPowerMode] = useState(false);
-  const [pulse, setPulse] = useState(null);
+  const [pulses, setPulses] = useState([]);
   const [successWave, setSuccessWave] = useState(0);
+  const [successRect, setSuccessRect] = useState(null);
   const [quoteHighlight, setQuoteHighlight] = useState(null);
   const [quoteFocus, setQuoteFocus] = useState(null);
   const decayRef = useRef(null);
   const focusQuoteRef = useRef(null);
+  const powerRef = useRef(false);
+
+  const calmMode = useMemo(() => computeCalmMode(tracker), [tracker]);
 
   const setIntensity = useCallback((level) => {
     setIntensityState(level);
@@ -58,7 +65,7 @@ export function VitalityProvider({ context = 'dashboard', children }) {
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     setFocusPoint({ x, y, t: Date.now() });
-    setTypingEnergy((e) => Math.max(e, 0.3));
+    setTypingEnergy((e) => Math.max(e, 0.35));
 
     const quoteContext = THEME_TO_CONTEXT[fieldTheme] || context;
     const pool = FOCUS_QUOTES[quoteContext] || FOCUS_QUOTES.dashboard;
@@ -70,52 +77,104 @@ export function VitalityProvider({ context = 'dashboard', children }) {
   const signalBlur = useCallback(() => {
     setFocusPoint(null);
     setTypingEnergy(0);
+    setNumericTyping(false);
     setPowerMode(false);
+    powerRef.current = false;
     setTimeout(() => setQuoteFocus(null), 1800);
   }, []);
 
-  const signalTyping = useCallback((text, _theme) => {
-    const power = detectPowerWords(text);
+  const signalTyping = useCallback((text, _theme, { numeric = false } = {}) => {
+    const str = String(text ?? '').trim();
+    const power = detectPowerWords(str);
+    const isNum = numeric || NUMERIC_PATTERN.test(str) || /\d{2,}/.test(str);
+    powerRef.current = power;
     setPowerMode(power);
-    setTypingEnergy((prev) => Math.min(1, prev + 0.18));
+    setNumericTyping(isNum);
+    setTypingEnergy((prev) => Math.min(1, prev + (isNum ? 0.26 : 0.18)));
     if (decayRef.current) clearTimeout(decayRef.current);
     decayRef.current = setTimeout(() => {
-      setTypingEnergy((prev) => Math.max(0, prev - 0.2));
-    }, 140);
+      setTypingEnergy((prev) => Math.max(0, prev - 0.18));
+    }, 160);
   }, []);
 
   const signalPulse = useCallback((rect, strength = 0.6) => {
     if (!rect) return;
-    setPulse({
+    const entry = {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2,
-      strength,
+      strength: Math.min(1, strength * (powerRef.current ? 1.35 : 1)),
+      warm: powerRef.current,
       t: Date.now(),
-    });
+    };
+    setPulses((prev) => [...prev.slice(-7), entry]);
   }, []);
 
-  const signalSuccess = useCallback((area = 'default') => {
-    setSuccessWave(Date.now());
+  const signalSuccess = useCallback((area = 'default', rect = null) => {
+    const now = Date.now();
+    setSuccessWave(now);
+    setSuccessRect(rect);
     const msg = SUCCESS_QUOTES[area] || SUCCESS_QUOTES.default;
-    setQuoteHighlight({ text: msg, t: Date.now() });
-    setTimeout(() => setQuoteHighlight(null), 5500);
+    setQuoteHighlight({ text: msg, t: now });
+    setTimeout(() => {
+      setQuoteHighlight(null);
+      setSuccessRect(null);
+    }, 5500);
+    setTimeout(() => setSuccessWave(0), 2000);
   }, []);
+
+  const signalSuccessFromElement = useCallback((area, el) => {
+    signalSuccess(area, cardRectFromElement(el));
+  }, [signalSuccess]);
 
   useEffect(() => () => {
     if (decayRef.current) clearTimeout(decayRef.current);
   }, []);
+
+  useEffect(() => {
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (!el?.matches?.('input, textarea, select')) return;
+      if (el.classList?.contains('reactive-input')) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width > 0) signalFocus(rect, null);
+    };
+    const onInput = (e) => {
+      const el = e.target;
+      if (!el?.matches?.('input, textarea')) return;
+      if (el.classList?.contains('reactive-input')) return;
+      const numeric = el.type === 'number';
+      signalTyping(el.value, null, { numeric });
+      signalPulse(el.getBoundingClientRect(), numeric ? 0.65 : 0.45);
+    };
+    const onFocusOut = (e) => {
+      if (e.target?.matches?.('input, textarea, select') && !e.target.classList?.contains('reactive-input')) {
+        signalBlur();
+      }
+    };
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('input', onInput);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('input', onInput);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, [signalFocus, signalBlur, signalTyping, signalPulse]);
 
   const value = useMemo(
     () => ({
       context,
       intensity,
       intensityScale: INTENSITY_SCALE[intensity] ?? 1,
+      calmMode,
       setIntensity,
       focusPoint,
       typingEnergy,
+      numericTyping,
       powerMode,
-      pulse,
+      pulses,
       successWave,
+      successRect,
       quoteHighlight,
       quoteFocus,
       quotes: VITALITY_QUOTES[context] || VITALITY_QUOTES.dashboard,
@@ -124,15 +183,19 @@ export function VitalityProvider({ context = 'dashboard', children }) {
       signalTyping,
       signalPulse,
       signalSuccess,
+      signalSuccessFromElement,
     }),
     [
       context,
       intensity,
+      calmMode,
       focusPoint,
       typingEnergy,
+      numericTyping,
       powerMode,
-      pulse,
+      pulses,
       successWave,
+      successRect,
       quoteHighlight,
       quoteFocus,
       setIntensity,
@@ -141,6 +204,7 @@ export function VitalityProvider({ context = 'dashboard', children }) {
       signalTyping,
       signalPulse,
       signalSuccess,
+      signalSuccessFromElement,
     ],
   );
 
@@ -160,6 +224,7 @@ export function useVitality() {
       signalTyping: () => {},
       signalPulse: () => {},
       signalSuccess: () => {},
+      signalSuccessFromElement: () => {},
     };
   }
   return ctx;

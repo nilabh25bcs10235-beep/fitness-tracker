@@ -72,7 +72,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
   const [saving, setSaving] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateMsg, setCelebrateMsg] = useState('');
-  const { signalSuccess } = useVitality();
+  const { signalSuccessFromElement } = useVitality();
 
   useEffect(() => {
     if (data?.has_plan) {
@@ -81,7 +81,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     }
   }, [data]);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (triggerEl) => {
     setGenerating(true);
     setError('');
     try {
@@ -95,7 +95,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
       setStep('results');
       setCelebrateMsg('Your meal plan is ready!');
       setCelebrate(true);
-      signalSuccess('recipe');
+      signalSuccessFromElement('recipe', triggerEl);
       onRefresh?.();
     } catch (e) {
       setError(e.message);
@@ -104,40 +104,40 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     }
   };
 
-  const patchToday = async (nextToday) => {
+  const patchToday = async (nextToday, triggerEl) => {
     setSaving('today');
     try {
       const res = await api.updateTodayPlan(nextToday);
       setPlan(res);
       setCelebrateMsg("Today's plan saved!");
       setCelebrate(true);
-      signalSuccess('recipe');
+      signalSuccessFromElement('recipe', triggerEl);
     } finally {
       setSaving('');
     }
   };
 
-  const patchGrocery = async (nextGrocery) => {
+  const patchGrocery = async (nextGrocery, triggerEl) => {
     setSaving('grocery');
     try {
       const res = await api.updateGrocery(nextGrocery);
       setPlan(res);
       setCelebrateMsg('Grocery list saved!');
       setCelebrate(true);
-      signalSuccess('recipe');
+      signalSuccessFromElement('recipe', triggerEl);
     } finally {
       setSaving('');
     }
   };
 
-  const patchWeekly = async (nextWeekly) => {
+  const patchWeekly = async (nextWeekly, triggerEl) => {
     setSaving('weekly');
     try {
       const res = await api.updateWeeklySchedule(nextWeekly);
       setPlan(res);
       setCelebrateMsg('Weekly schedule saved!');
       setCelebrate(true);
-      signalSuccess('recipe');
+      signalSuccessFromElement('recipe', triggerEl);
     } finally {
       setSaving('');
     }
@@ -150,7 +150,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     setPlan({ ...plan, today_plan: next });
   };
 
-  const saveToday = () => patchToday(plan.today_plan);
+  const saveToday = (el) => patchToday(plan.today_plan, el);
 
   const updateGroceryItem = (id, field, value) => {
     const next = (plan.grocery_list || []).map((g) =>
@@ -159,7 +159,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     setPlan({ ...plan, grocery_list: next });
   };
 
-  const saveGrocery = () => patchGrocery(plan.grocery_list);
+  const saveGrocery = (el) => patchGrocery(plan.grocery_list, el);
 
   const addGroceryItem = () => {
     const next = [
@@ -176,7 +176,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
     setPlan({ ...plan, weekly_schedule: next });
   };
 
-  const saveWeekly = () => patchWeekly(plan.weekly_schedule);
+  const saveWeekly = (el) => patchWeekly(plan.weekly_schedule, el);
 
   if (step === 'form' && !plan?.has_plan) {
     return (
@@ -203,7 +203,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
           value={goals}
           onChange={(e) => setGoals(e.target.value)}
         />
-        <button type="button" className="btn btn-glow" onClick={handleGenerate} disabled={generating}>
+        <button type="button" className="btn btn-glow" onClick={(e) => handleGenerate(e.currentTarget)} disabled={generating}>
           {generating ? 'Creating plan...' : 'Generate My Plan'}
         </button>
         <CelebrateBurst
@@ -252,7 +252,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
             />
           ))}
         </div>
-        <button type="button" className="btn btn-glow" onClick={saveToday} disabled={saving === 'today'}>
+        <button type="button" className="btn btn-glow" onClick={(e) => saveToday(e.currentTarget)} disabled={saving === 'today'}>
           {saving === 'today' ? 'Saving...' : 'Save Today\'s Plan'}
         </button>
       </div>
@@ -279,7 +279,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
         </ul>
         <div className="chip-row">
           <button type="button" className="btn btn-secondary" onClick={addGroceryItem}>+ Add item</button>
-          <button type="button" className="btn btn-glow" onClick={saveGrocery} disabled={saving === 'grocery'}>
+          <button type="button" className="btn btn-glow" onClick={(e) => saveGrocery(e.currentTarget)} disabled={saving === 'grocery'}>
             {saving === 'grocery' ? 'Saving...' : 'Save Grocery List'}
           </button>
         </div>
@@ -308,7 +308,7 @@ export default function Recipes({ data, loading, onRefresh, user }) {
             </div>
           );
         })}
-        <button type="button" className="btn btn-glow" onClick={saveWeekly} disabled={saving === 'weekly'}>
+        <button type="button" className="btn btn-glow" onClick={(e) => saveWeekly(e.currentTarget)} disabled={saving === 'weekly'}>
           {saving === 'weekly' ? 'Saving...' : 'Save Weekly Schedule'}
         </button>
       </div>

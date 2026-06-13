@@ -73,7 +73,7 @@ export default function MealLogger({ meals, onRefresh }) {
   const analyzeAbortRef = useRef(null);
   const lastAnalyzedRef = useRef('');
   const inputRef = useRef(null);
-  const { signalSuccess } = useVitality();
+  const { signalSuccessFromElement } = useVitality();
 
   const runAnalysis = async (text) => {
     const trimmed = text.trim();
@@ -147,7 +147,7 @@ export default function MealLogger({ meals, onRefresh }) {
     runAnalysis(name);
   };
 
-  const handleLogMeal = async () => {
+  const handleLogMeal = async (triggerEl) => {
     const data = analysis || {
       name: description.slice(0, 50) || 'Meal',
       description,
@@ -180,7 +180,7 @@ export default function MealLogger({ meals, onRefresh }) {
       });
       setLastHealthScore(saved.health_score);
       setCelebrate(true);
-      signalSuccess('meals');
+      signalSuccessFromElement('meals', triggerEl);
       setDescription('');
       setAnalysis(null);
       setSuggestions([]);
@@ -258,7 +258,7 @@ export default function MealLogger({ meals, onRefresh }) {
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
           <button
             className="btn btn-primary"
-            onClick={handleLogMeal}
+            onClick={(e) => handleLogMeal(e.currentTarget)}
             disabled={loading || !description.trim()}
           >
             {loading ? 'Saving...' : 'Log Meal'}

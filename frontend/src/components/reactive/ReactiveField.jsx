@@ -33,11 +33,14 @@ export default function ReactiveField({
     onBlurProp?.(e);
   };
 
+  const isNumeric = rest.type === 'number';
+
   const handleChange = (e) => {
     onChange?.(e);
-    signalTyping(e.target.value, theme);
+    signalTyping(e.target.value, theme, { numeric: isNumeric });
     if (shellRef.current) {
-      signalPulse(shellRef.current.getBoundingClientRect(), 0.35 + intensity * 0.45);
+      const base = isNumeric ? 0.5 : 0.38;
+      signalPulse(shellRef.current.getBoundingClientRect(), base + intensity * (isNumeric ? 0.5 : 0.42));
     }
   };
 

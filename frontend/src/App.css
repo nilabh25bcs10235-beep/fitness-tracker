@@ -1860,7 +1860,8 @@ button.chip:active {
   transform: scale(1.005);
 }
 
-.reactive-shell.theme-fire.is-focused {
+.reactive-shell.theme-fire.is-focused,
+.reactive-shell.is-typing:has(.reactive-input[type="number"]) {
   border-color: rgba(249, 115, 22, 0.5);
   box-shadow:
     0 0 0 3px rgba(249, 115, 22, 0.12),
@@ -2125,6 +2126,15 @@ button.chip:active {
     radial-gradient(ellipse at 28% 18%, rgba(15, 23, 42, 0.9) 0%, transparent 52%),
     radial-gradient(ellipse at 72% 82%, rgba(8, 47, 73, 0.35) 0%, transparent 48%),
     #030308;
+  transition: opacity 1.2s ease;
+}
+
+.vitality-bg.vitality-calm .vitality-base {
+  opacity: 0.92;
+}
+
+.vitality-bg.vitality-calm .vitality-canvas {
+  filter: saturate(0.85);
 }
 
 .vitality-canvas {

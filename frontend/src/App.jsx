@@ -287,7 +287,7 @@ export default function App() {
     );
   } else {
     content = (
-      <VitalityProvider context={activeTheme}>
+      <VitalityProvider context={activeTheme} tracker={weeklyTracker}>
         <AppRoot className={appVisible ? 'app-visible' : 'app-entering'}>
           <VitalityBackground />
           <div className="app">

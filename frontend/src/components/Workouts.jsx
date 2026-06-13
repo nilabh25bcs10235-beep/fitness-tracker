@@ -22,7 +22,7 @@ export default function Workouts({ onRefresh }) {
   const [savedMsg, setSavedMsg] = useState('');
   const [celebrate, setCelebrate] = useState(false);
   const [celebrateTheme, setCelebrateTheme] = useState('fire');
-  const { signalSuccess } = useVitality();
+  const { signalSuccessFromElement } = useVitality();
 
   const loadExercises = async () => {
     const target = customPart.trim() || bodyPart;
@@ -116,7 +116,7 @@ export default function Workouts({ onRefresh }) {
               className="btn btn-secondary"
               style={{ marginTop: '0.75rem' }}
               disabled={loading}
-              onClick={async () => {
+              onClick={async (e) => {
                 setLoading(true);
                 try {
                   await api.logWorkout({
@@ -128,7 +128,7 @@ export default function Workouts({ onRefresh }) {
                   setSavedMsg('Workout saved to today\'s tracker!');
                   setCelebrateTheme('fire');
                   setCelebrate(true);
-                  signalSuccess('workouts');
+                  signalSuccessFromElement('workouts', e.currentTarget);
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);
@@ -208,7 +208,7 @@ export default function Workouts({ onRefresh }) {
               className="btn btn-secondary"
               style={{ marginTop: '0.75rem' }}
               disabled={loading}
-              onClick={async () => {
+              onClick={async (e) => {
                 setLoading(true);
                 try {
                   const totalCal = plan.exercises.reduce((s, ex) => s + (ex.calories_burned_est || 0), 0);
@@ -224,7 +224,7 @@ export default function Workouts({ onRefresh }) {
                   setSavedMsg(`${plan.body_part} workout saved to today's tracker!`);
                   setCelebrateTheme('workout');
                   setCelebrate(true);
-                  signalSuccess('workouts');
+                  signalSuccessFromElement('workouts', e.currentTarget);
                   onRefresh?.();
                 } catch (e) {
                   setError(e.message);
