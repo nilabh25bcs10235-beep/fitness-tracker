@@ -1,8 +1,8 @@
 import { api } from '../api';
 import { isPuterAvailable, puterVisionJson } from './puterVision';
 
-const REVIEW_PASSES = 10;
-const TOTAL_STAGES = 12;
+const REVIEW_PASSES = 5;
+const TOTAL_STAGES = 2 + REVIEW_PASSES + 1;
 
 const MEAL_VISION_SYSTEM = `You are a strict nutrition vision expert for Indian and global meals.
 Identify food items in the image and estimate nutrition realistically.

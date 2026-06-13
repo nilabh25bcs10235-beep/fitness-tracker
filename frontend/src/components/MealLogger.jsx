@@ -251,7 +251,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
           <div>
             <h2>Log a Meal</h2>
             <p className="meal-logger-sub">
-              Type a description or scan a photo — AI cross-checks vision and text in 10 review passes.
+              Type a description or scan a photo — AI cross-checks vision and text in 5 review passes.
             </p>
           </div>
           <div className="meal-mode-tabs">

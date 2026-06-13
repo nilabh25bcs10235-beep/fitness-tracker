@@ -297,9 +297,24 @@ class RecipeResponse(BaseModel):
 
 class BodyImageAnalysis(BaseModel):
     estimated_bmi: float
+    bmi_category: Optional[str] = None
     body_fat_pct: Optional[float] = None
     muscle_mass_kg: Optional[float] = None
+    lean_mass_kg: Optional[float] = None
+    fat_mass_kg: Optional[float] = None
+    skeletal_muscle_pct: Optional[float] = None
+    visceral_fat_level: Optional[float] = None
+    waist_to_height_ratio: Optional[float] = None
+    metabolic_age: Optional[float] = None
+    basal_metabolic_rate_kcal: Optional[float] = None
+    daily_calorie_estimate_kcal: Optional[float] = None
+    protein_target_g: Optional[float] = None
+    hydration_target_ml: Optional[float] = None
+    posture_score: Optional[float] = None
+    body_type: Optional[str] = None
+    fitness_level: Optional[str] = None
     physique_notes: str
+    muscle_balance: Optional[str] = None
     nutritional_advice: str
     goal_recommendations: List[str]
     review_passes: Optional[int] = None

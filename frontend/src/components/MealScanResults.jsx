@@ -39,7 +39,7 @@ export default function MealScanResults({ analysis, previewUrl }) {
           </div>
         )}
         <div className="scan-results-summary">
-          <span className="scan-badge">10-pass verified</span>
+          <span className="scan-badge">5-pass verified</span>
           <h3>{analysis.name}</h3>
           <p className="scan-desc">{analysis.description}</p>
           {analysis.notes && <p className="scan-notes">{analysis.notes}</p>}

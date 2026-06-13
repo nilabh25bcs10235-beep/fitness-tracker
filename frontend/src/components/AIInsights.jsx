@@ -369,7 +369,7 @@ export default function AIInsights({ user }) {
             <h3>Body Scan</h3>
             <p className="body-scan-sub">
               Upload a full-body photo. Groq vision and text models cross-check your profile
-              through 10 review passes before finalizing BMI and nutrition advice.
+              through 5 review passes before delivering a full body composition report.
             </p>
           </div>
           <span className="scan-badge">Vision + Text AI</span>

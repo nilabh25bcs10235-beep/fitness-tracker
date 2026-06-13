@@ -15,7 +15,7 @@ from .groq_client import (
     estimate_meal_from_text,
 )
 
-REVIEW_PASSES = 10
+REVIEW_PASSES = 5
 
 MEAL_VISION_SYSTEM = """You are a strict nutrition vision expert for Indian and global meals.
 Identify every visible food item and estimate nutrition realistically.
@@ -78,33 +78,43 @@ Return ONLY valid JSON:
   "micro_description": "2-3 sentence micronutrient summary"
 }"""
 
-BODY_VISION_SYSTEM = """You are a fitness assessor analyzing a full-body photo.
-Estimate BMI range, body composition, and give nutritional goal advice.
+BODY_STATS_SCHEMA = """{
+  "estimated_bmi": number,
+  "bmi_category": "underweight|normal|overweight|obese",
+  "body_fat_pct": number,
+  "muscle_mass_kg": number,
+  "lean_mass_kg": number,
+  "fat_mass_kg": number,
+  "skeletal_muscle_pct": number,
+  "visceral_fat_level": number,
+  "waist_to_height_ratio": number,
+  "metabolic_age": number,
+  "basal_metabolic_rate_kcal": number,
+  "daily_calorie_estimate_kcal": number,
+  "protein_target_g": number,
+  "hydration_target_ml": number,
+  "posture_score": number,
+  "body_type": "ectomorph|mesomorph|endomorph|mixed",
+  "fitness_level": "beginner|intermediate|advanced",
+  "physique_notes": "what you observe about build/posture",
+  "muscle_balance": "brief note on upper/lower/core balance from photo",
+  "nutritional_advice": "2-3 sentences tailored to their goal",
+  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"]
+}"""
+
+BODY_VISION_SYSTEM = f"""You are a fitness assessor analyzing a full-body photo.
+Estimate comprehensive body composition and metabolic stats from the image and user profile.
 This is an AI estimate only — not medical advice. Do NOT output confidence scores.
 
 Return ONLY valid JSON:
-{
-  "estimated_bmi": number,
-  "body_fat_pct": number,
-  "muscle_mass_kg": number,
-  "physique_notes": "what you observe about build/posture",
-  "nutritional_advice": "2-3 sentences tailored to their goal",
-  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"]
-}"""
+{BODY_STATS_SCHEMA}"""
 
-BODY_REVIEW_SYSTEM = """You are a senior fitness assessor reconciling vision AI and profile-based text AI.
-Cross-check photo observations with user profile data. Refine estimates conservatively.
+BODY_REVIEW_SYSTEM = f"""You are a senior fitness assessor reconciling vision AI and profile-based text AI.
+Cross-check photo observations with user profile data. Refine all stats conservatively and coherently.
 Do NOT output confidence scores.
 
 Return ONLY valid JSON:
-{
-  "estimated_bmi": number,
-  "body_fat_pct": number,
-  "muscle_mass_kg": number,
-  "physique_notes": "refined observation",
-  "nutritional_advice": "2-3 sentences tailored to their goal",
-  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"]
-}"""
+{BODY_STATS_SCHEMA}"""
 
 
 def _num(value, default=0.0) -> float:
@@ -140,19 +150,54 @@ def _merge_meal_estimates(vision: Dict, text: Dict) -> Dict:
     }
 
 
+BODY_NUMERIC_KEYS = [
+    "estimated_bmi", "body_fat_pct", "muscle_mass_kg", "lean_mass_kg", "fat_mass_kg",
+    "skeletal_muscle_pct", "visceral_fat_level", "waist_to_height_ratio", "metabolic_age",
+    "basal_metabolic_rate_kcal", "daily_calorie_estimate_kcal", "protein_target_g",
+    "hydration_target_ml", "posture_score",
+]
+
+
+def _avg_field(vision: Dict, text: Dict, key: str, text_key: Optional[str] = None) -> float:
+    v = _num(vision.get(key))
+    t = _num(text.get(text_key or key))
+    if v and t:
+        return round((v + t) / 2, 1)
+    return v or t
+
+
 def _merge_body_estimates(vision: Dict, text: Dict, user_context: Dict) -> Dict:
-    weight = _num(user_context.get("weight_kg"))
-    return {
-        "estimated_bmi": round((_num(vision.get("estimated_bmi")) + _num(text.get("bmi"))) / 2, 1),
-        "body_fat_pct": round((_num(vision.get("body_fat_pct")) + _num(text.get("body_fat_pct"))) / 2, 1),
-        "muscle_mass_kg": round(
-            (_num(vision.get("muscle_mass_kg")) + _num(text.get("muscle_mass_kg", weight * 0.4))) / 2,
-            1,
-        ),
+    weight = _num(user_context.get("weight_kg"), 70)
+    text_muscle = _num(text.get("muscle_mass_kg"), weight * 0.4)
+    vision_muscle = _num(vision.get("muscle_mass_kg"))
+    muscle_mass = round((vision_muscle + text_muscle) / 2, 1) if vision_muscle and text_muscle else vision_muscle or text_muscle
+
+    merged = {
+        "estimated_bmi": _avg_field(vision, text, "estimated_bmi", "bmi"),
+        "body_fat_pct": _avg_field(vision, text, "body_fat_pct"),
+        "muscle_mass_kg": muscle_mass,
         "physique_notes": vision.get("physique_notes", ""),
+        "muscle_balance": vision.get("muscle_balance", ""),
         "nutritional_advice": vision.get("nutritional_advice", ""),
         "goal_recommendations": vision.get("goal_recommendations") or [],
+        "bmi_category": vision.get("bmi_category", ""),
+        "body_type": vision.get("body_type", ""),
+        "fitness_level": vision.get("fitness_level", ""),
     }
+
+    for key in BODY_NUMERIC_KEYS:
+        if key in merged:
+            continue
+        val = _num(vision.get(key))
+        if val:
+            merged[key] = val
+
+    if not merged.get("lean_mass_kg") and weight and merged.get("body_fat_pct"):
+        merged["lean_mass_kg"] = round(weight * (1 - merged["body_fat_pct"] / 100), 1)
+    if not merged.get("fat_mass_kg") and weight and merged.get("body_fat_pct"):
+        merged["fat_mass_kg"] = round(weight * merged["body_fat_pct"] / 100, 1)
+
+    return merged
 
 
 def _meal_review_pass(
@@ -204,9 +249,11 @@ def analyze_meal_image_collaborative(
     dietary_restrictions: str = "",
     on_stage: Optional[Callable[[str, int, int], None]] = None,
 ) -> Dict:
-    def stage(label: str, step: int, total: int = 12) -> None:
+    total_stages = 2 + REVIEW_PASSES + 1
+
+    def stage(label: str, step: int) -> None:
         if on_stage:
-            on_stage(label, step, total)
+            on_stage(label, step, total_stages)
 
     stage("Vision scan", 1)
     vision = _vision_json(
@@ -227,7 +274,7 @@ def analyze_meal_image_collaborative(
         stage(f"Review pass {i}/{REVIEW_PASSES}", 2 + i)
         current = _meal_review_pass(vision, text, current, i, dietary_restrictions)
 
-    stage("Finalizing", 12)
+    stage("Finalizing", total_stages)
     result = _ai_result({
         **current,
         "review_passes": REVIEW_PASSES,
@@ -243,16 +290,18 @@ def analyze_body_image_collaborative(
     user_context: Dict,
     on_stage: Optional[Callable[[str, int, int], None]] = None,
 ) -> Dict:
-    def stage(label: str, step: int, total: int = 12) -> None:
+    total_stages = 2 + REVIEW_PASSES + 1
+
+    def stage(label: str, step: int) -> None:
         if on_stage:
-            on_stage(label, step, total)
+            on_stage(label, step, total_stages)
 
     stage("Vision scan", 1)
     vision = _vision_json(
         BODY_VISION_SYSTEM,
         f"Analyze this full-body image. User profile: {json.dumps(user_context)}",
         image_bytes,
-        max_tokens=1200,
+        max_tokens=1800,
     )
 
     stage("Text cross-check", 2)
@@ -270,7 +319,7 @@ def analyze_body_image_collaborative(
         stage(f"Review pass {i}/{REVIEW_PASSES}", 2 + i)
         current = _body_review_pass(vision, text, current, i, user_context)
 
-    stage("Finalizing", 12)
+    stage("Finalizing", total_stages)
     result = _ai_result({
         **current,
         "review_passes": REVIEW_PASSES,

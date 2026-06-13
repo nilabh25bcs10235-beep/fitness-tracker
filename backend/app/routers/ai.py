@@ -146,12 +146,27 @@ async def analyze_body(
 
     return BodyImageAnalysis(
         estimated_bmi=float(result.get("estimated_bmi", 0)),
+        bmi_category=result.get("bmi_category"),
         body_fat_pct=result.get("body_fat_pct"),
         muscle_mass_kg=result.get("muscle_mass_kg"),
+        lean_mass_kg=result.get("lean_mass_kg"),
+        fat_mass_kg=result.get("fat_mass_kg"),
+        skeletal_muscle_pct=result.get("skeletal_muscle_pct"),
+        visceral_fat_level=result.get("visceral_fat_level"),
+        waist_to_height_ratio=result.get("waist_to_height_ratio"),
+        metabolic_age=result.get("metabolic_age"),
+        basal_metabolic_rate_kcal=result.get("basal_metabolic_rate_kcal"),
+        daily_calorie_estimate_kcal=result.get("daily_calorie_estimate_kcal"),
+        protein_target_g=result.get("protein_target_g"),
+        hydration_target_ml=result.get("hydration_target_ml"),
+        posture_score=result.get("posture_score"),
+        body_type=result.get("body_type"),
+        fitness_level=result.get("fitness_level"),
         physique_notes=result.get("physique_notes", ""),
+        muscle_balance=result.get("muscle_balance"),
         nutritional_advice=result.get("nutritional_advice", ""),
         goal_recommendations=result.get("goal_recommendations", []),
-        review_passes=result.get("review_passes", 10),
+        review_passes=result.get("review_passes", 5),
         analysis_method=result.get("analysis_method", ""),
     )
 

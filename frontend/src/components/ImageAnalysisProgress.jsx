@@ -1,7 +1,9 @@
+const REVIEW_PASSES = 5;
+
 const STAGES = [
   { key: 'vision', label: 'Vision scan', icon: '👁' },
   { key: 'text', label: 'Text cross-check', icon: '📝' },
-  ...Array.from({ length: 10 }, (_, i) => ({
+  ...Array.from({ length: REVIEW_PASSES }, (_, i) => ({
     key: `review-${i + 1}`,
     label: `Review ${i + 1}`,
     icon: '🔍',
@@ -24,7 +26,7 @@ export default function ImageAnalysisProgress({ stageIndex = 0, stageLabel = '',
           <p className="scan-progress-title">AI deep analysis</p>
           <p className="scan-progress-stage">{stageLabel || STAGES[stageIndex]?.label || 'Working...'}</p>
           <p className="scan-progress-sub">
-            Groq vision + Groq text · 10 review passes
+            Groq vision + Groq text · {REVIEW_PASSES} review passes
           </p>
         </div>
       </div>
