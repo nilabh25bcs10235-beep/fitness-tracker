@@ -234,6 +234,8 @@ class RecipeItem(BaseModel):
     timing: str = ""
     variants: List[str] = []
     youtube_video_id: Optional[str] = None
+    youtube_video_title: Optional[str] = None
+    youtube_thumbnail_url: Optional[str] = None
 
     @field_validator("youtube_video_id", mode="before")
     @classmethod
@@ -309,11 +311,26 @@ class ExerciseItem(BaseModel):
     calories_burned_est: int
     notes: str
     youtube_video_id: Optional[str] = None
+    youtube_video_title: Optional[str] = None
+    youtube_thumbnail_url: Optional[str] = None
 
     @field_validator("youtube_video_id", mode="before")
     @classmethod
     def _normalize_exercise_video(cls, value):
         return normalize_youtube_video_id(value)
+
+
+class YouTubePlaylistItem(BaseModel):
+    id: str
+    title: str
+    thumbnail_url: str = ""
+    channel: str = ""
+
+
+class YouTubePlaylistSearchResponse(BaseModel):
+    query: str
+    items: List[YouTubePlaylistItem]
+    youtube_enabled: bool = False
 
 
 class ExercisePlanResponse(BaseModel):

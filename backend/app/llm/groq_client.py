@@ -328,7 +328,7 @@ Return ONLY valid JSON:
       "frequency": "e.g. 3x per week",
       "timing": "e.g. post-workout lunch",
       "variants": ["variant 1", "variant 2"],
-      "youtube_video_id": null
+      "youtube_search_query": "specific YouTube search phrase for a cooking demo, e.g. chicken tikka recipe tutorial"
     }
   ],
   "grocery_list": ["consolidated items"],
@@ -383,7 +383,7 @@ Return ONLY valid JSON:
       "reps": "e.g. 8-12 or 30 sec",
       "calories_burned_est": number,
       "notes": "form tip",
-      "youtube_video_id": null
+      "youtube_search_query": "specific YouTube search phrase for form demo, e.g. proper bench press form tutorial"
     }
   ],
   "cardio_options": ["cardio exercise 1", "cardio exercise 2"],

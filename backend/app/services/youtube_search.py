@@ -1,7 +1,7 @@
-"""Resolve YouTube video IDs via YouTube Data API v3 (YT_KEY)."""
+"""YouTube Data API v3 — video & playlist search via YT_KEY."""
 
 import os
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 import httpx
 
@@ -19,17 +19,35 @@ def is_youtube_configured() -> bool:
     return bool(YT_KEY and YT_KEY.strip())
 
 
+def _pick_thumbnail(snippet: dict) -> str:
+    thumbs = snippet.get("thumbnails") or {}
+    for key in ("maxres", "high", "medium", "default"):
+        url = thumbs.get(key, {}).get("url")
+        if url:
+            return url
+    return ""
+
+
 def _query_for(name: str, kind: ItemKind) -> str:
     if kind == "exercise":
         return f"{name} exercise proper form tutorial"
     return f"{name} recipe cooking tutorial how to make"
 
 
-def search_video_id(query: str, *, kind: ItemKind) -> Optional[str]:
+def _resolve_search_query(row: dict, name: str, kind: ItemKind) -> Optional[str]:
+    ai_query = str(row.get("youtube_search_query", "")).strip()
+    if ai_query:
+        return ai_query
+    if name:
+        return _query_for(name, kind)
+    return None
+
+
+def search_video(query: str, *, kind: ItemKind) -> Optional[dict[str, str]]:
     if not is_youtube_configured():
         return None
 
-    payload = {"query": query.strip().lower(), "kind": kind}
+    payload = {"query": query.strip().lower(), "kind": kind, "type": "video"}
     cached = get_cached("yt_search", payload)
     if cached is not None:
         return cached or None
@@ -51,30 +69,86 @@ def search_video_id(query: str, *, kind: ItemKind) -> Optional[str]:
             )
             response.raise_for_status()
             items = response.json().get("items", [])
-            video_id = items[0]["id"]["videoId"] if items else None
-            set_cached("yt_search", payload, video_id or "", ttl=_CACHE_TTL)
-            return video_id
+            if not items:
+                set_cached("yt_search", payload, "", ttl=_CACHE_TTL)
+                return None
+
+            item = items[0]
+            snippet = item.get("snippet") or {}
+            result = {
+                "video_id": item["id"]["videoId"],
+                "title": snippet.get("title", ""),
+                "thumbnail_url": _pick_thumbnail(snippet),
+            }
+            set_cached("yt_search", payload, result, ttl=_CACHE_TTL)
+            return result
     except Exception:
         return None
 
 
-def enrich_items_with_videos(items: list[dict], *, kind: ItemKind) -> list[dict]:
-    """Attach embeddable YouTube IDs using YT_KEY when available."""
+def search_playlists(query: str, *, max_results: int = 10) -> list[dict[str, str]]:
     if not is_youtube_configured():
-        return items
+        return []
 
+    max_results = max(1, min(max_results, 25))
+    payload = {"query": query.strip().lower(), "type": "playlist", "max": max_results}
+    cached = get_cached("yt_playlist", payload)
+    if cached is not None:
+        return cached
+
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            response = client.get(
+                _SEARCH_URL,
+                params={
+                    "part": "snippet",
+                    "type": "playlist",
+                    "maxResults": max_results,
+                    "q": query,
+                    "relevanceLanguage": "en",
+                    "safeSearch": "moderate",
+                    "key": YT_KEY,
+                },
+            )
+            response.raise_for_status()
+            items = response.json().get("items", [])
+            playlists = []
+            for item in items:
+                snippet = item.get("snippet") or {}
+                playlist_id = item.get("id", {}).get("playlistId")
+                if not playlist_id:
+                    continue
+                playlists.append({
+                    "id": playlist_id,
+                    "title": snippet.get("title", "Playlist"),
+                    "thumbnail_url": _pick_thumbnail(snippet),
+                    "channel": snippet.get("channelTitle", ""),
+                })
+            set_cached("yt_playlist", payload, playlists, ttl=_CACHE_TTL)
+            return playlists
+    except Exception:
+        return []
+
+
+def enrich_items_with_videos(items: list[dict], *, kind: ItemKind) -> list[dict]:
+    """Resolve embeddable videos using AI search queries + YT_KEY."""
     enriched = []
     for item in items:
         row = dict(item)
         name = str(row.get("name", "")).strip()
-        if not name:
-            enriched.append(row)
-            continue
+        query = _resolve_search_query(row, name, kind)
 
-        video_id = search_video_id(_query_for(name, kind), kind=kind)
-        if video_id:
-            row["youtube_video_id"] = video_id
-        else:
+        if is_youtube_configured() and query:
+            meta = search_video(query, kind=kind)
+            if meta:
+                row["youtube_video_id"] = meta["video_id"]
+                row["youtube_video_title"] = meta["title"]
+                row["youtube_thumbnail_url"] = meta["thumbnail_url"]
+            else:
+                row["youtube_video_id"] = normalize_youtube_video_id(row.get("youtube_video_id"))
+        elif not row.get("youtube_video_id"):
             row["youtube_video_id"] = normalize_youtube_video_id(row.get("youtube_video_id"))
+
+        row.pop("youtube_search_query", None)
         enriched.append(row)
     return enriched

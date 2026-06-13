@@ -4,6 +4,7 @@ import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
 import YouTubeThumbnail from './YouTubeThumbnail';
 import YouTubeVideoModal from './YouTubeVideoModal';
+import WorkoutMusic from './WorkoutMusic';
 import { useVitality } from '../context/VitalityContext';
 
 const BODY_PARTS = [
@@ -196,7 +197,8 @@ export default function Workouts({ onRefresh }) {
                 {ex.youtube_video_id && (
                   <YouTubeThumbnail
                     videoId={ex.youtube_video_id}
-                    title={ex.name}
+                    title={ex.youtube_video_title || ex.name}
+                    thumbnailUrl={ex.youtube_thumbnail_url}
                     onClick={(id, title) => setVideoModal({ id, title })}
                   />
                 )}
@@ -250,6 +252,8 @@ export default function Workouts({ onRefresh }) {
           </div>
         )}
       </div>
+
+      <WorkoutMusic />
 
       {error && <p className="error">{error}</p>}
 

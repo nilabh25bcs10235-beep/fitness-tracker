@@ -297,4 +297,10 @@ export const api = {
 
   getWorkouts: (logDate) =>
     cachedGet(`/api/workouts/me${logDate ? `?log_date=${logDate}` : ''}`, TTL.meals),
+
+  searchWorkoutPlaylists: (q, maxResults = 10) =>
+    cachedGet(
+      `/api/youtube/playlists?q=${encodeURIComponent(q)}&max_results=${maxResults}`,
+      300_000,
+    ),
 };

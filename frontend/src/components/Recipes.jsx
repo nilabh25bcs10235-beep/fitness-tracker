@@ -335,7 +335,8 @@ export default function Recipes({ data, loading, onRefresh, user }) {
           {r.youtube_video_id && (
             <YouTubeThumbnail
               videoId={r.youtube_video_id}
-              title={r.name}
+              title={r.youtube_video_title || r.name}
+              thumbnailUrl={r.youtube_thumbnail_url}
               className="youtube-thumb-recipe"
               onClick={(id, title) => setVideoModal({ id, title })}
             />

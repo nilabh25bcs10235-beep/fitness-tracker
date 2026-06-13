@@ -1,16 +1,23 @@
 import { useState } from 'react';
 import { normalizeVideoId, youtubeThumbnailUrl } from '../lib/youtube';
 
-export default function YouTubeThumbnail({ videoId, title = 'Watch video', onClick, className = '' }) {
+export default function YouTubeThumbnail({
+  videoId,
+  title = 'Watch video',
+  thumbnailUrl,
+  onClick,
+  className = '',
+}) {
   const id = normalizeVideoId(videoId);
   const [quality, setQuality] = useState('maxresdefault');
 
   if (!id) return null;
 
-  const src = youtubeThumbnailUrl(id, quality);
+  const src = thumbnailUrl || youtubeThumbnailUrl(id, quality);
 
   const handleError = () => {
-    if (quality !== 'hqdefault') setQuality('hqdefault');
+    if (thumbnailUrl || quality === 'hqdefault') return;
+    setQuality('hqdefault');
   };
 
   return (

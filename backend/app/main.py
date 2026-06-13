@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import users, meals, progress, recipes, ai, workouts, hydration
+from .routers import users, meals, progress, recipes, ai, workouts, hydration, youtube
 
 
 def _ensure_user_auth_columns():
@@ -96,12 +96,18 @@ app.include_router(recipes.router)
 app.include_router(ai.router)
 app.include_router(workouts.router)
 app.include_router(hydration.router)
+app.include_router(youtube.router)
 
 
 @app.get("/api/health")
 def health():
     from .llm.groq_client import _ai_available
-    return {"status": "ok", "ai_enabled": _ai_available()}
+    from .services.youtube_search import is_youtube_configured
+    return {
+        "status": "ok",
+        "ai_enabled": _ai_available(),
+        "youtube_enabled": is_youtube_configured(),
+    }
 
 
 static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "static"))
