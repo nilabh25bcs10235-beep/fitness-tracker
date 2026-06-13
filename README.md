@@ -51,7 +51,7 @@ Then open **[http://localhost:5173](http://localhost:5173)**
 |----------|-------------|
 | `GROQ_API_KEY` | Your Groq API key (required for AI features) |
 | `GROQ_TEXT_MODEL` | Default: `llama-3.3-70b-versatile` |
-| `GROQ_VISION_MODEL` | Default: `llama-3.2-90b-vision-preview` |
+| `GROQ_VISION_MODEL` | Default: `meta-llama/llama-4-scout-17b-16e-instruct` |
 
 `GROQ_API_KEY` is **required** — all nutrition analysis, targets, recipes, and insights are generated live by Groq. No hardcoded fitness database.
 
