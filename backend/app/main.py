@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import inspect, text
 from .database import engine, Base
-from .routers import users, meals, progress, recipes, ai, workouts
+from .routers import users, meals, progress, recipes, ai, workouts, hydration
 
 
 def _ensure_user_auth_columns():
@@ -34,6 +34,10 @@ def _ensure_schema_updates():
         meal_cols = {col["name"] for col in inspector.get_columns("meals")}
         if "health_score" not in meal_cols:
             statements.append("ALTER TABLE meals ADD COLUMN health_score VARCHAR(30)")
+    if "users" in tables:
+        user_cols = {col["name"] for col in inspector.get_columns("users")}
+        if "daily_water_target_ml" not in user_cols:
+            statements.append("ALTER TABLE users ADD COLUMN daily_water_target_ml INTEGER")
     if not statements:
         return
     with engine.begin() as conn:
@@ -83,6 +87,7 @@ app.include_router(progress.router)
 app.include_router(recipes.router)
 app.include_router(ai.router)
 app.include_router(workouts.router)
+app.include_router(hydration.router)
 
 
 @app.get("/api/health")

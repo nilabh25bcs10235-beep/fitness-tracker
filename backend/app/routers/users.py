@@ -6,6 +6,7 @@ from ..deps import get_auth_id, get_user_profile
 from ..models import User
 from ..schemas import UserCreate, UserResponse
 from ..llm.groq_client import calculate_targets, AIError
+from ..services.hydration_plan import water_target_ml
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -47,6 +48,7 @@ def create_user(
         daily_protein_target=targets["daily_protein_target"],
         daily_carbs_target=targets.get("daily_carbs_target"),
         daily_fat_target=targets.get("daily_fat_target"),
+        daily_water_target_ml=water_target_ml(payload.weight_kg, payload.goal),
         target_reasoning=targets.get("reasoning"),
     )
     db.add(user)

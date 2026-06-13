@@ -100,6 +100,15 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  getHydrationToday: () => request('/api/hydration/me/today'),
+
+  logWater: (data) =>
+    request('/api/hydration/me/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+
   getRecipes: () => request('/api/recipes/me'),
 
   generateRecipes: (preferences) =>

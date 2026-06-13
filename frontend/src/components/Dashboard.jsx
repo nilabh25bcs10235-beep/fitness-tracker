@@ -4,6 +4,7 @@ import {
   ResponsiveContainer, CartesianGrid, Legend,
 } from 'recharts';
 import DailyTracker from './DailyTracker';
+import HydrationPlan from './HydrationPlan';
 import ChartTooltip from './ChartTooltip';
 
 const CHART_AXIS = { stroke: 'rgba(148,163,184,0.35)', fontSize: 11, tickLine: false, axisLine: false };
@@ -24,7 +25,7 @@ function MacroProgress({ label, current, target, unit }) {
   );
 }
 
-export default function Dashboard({ data, tracker, onLogWeight }) {
+export default function Dashboard({ data, tracker, hydration, onLogWeight, onHydrationUpdate }) {
   const [selectedDay, setSelectedDay] = useState(null);
 
   if (!data) return <div className="card glass-card">Loading dashboard...</div>;
@@ -39,6 +40,10 @@ export default function Dashboard({ data, tracker, onLogWeight }) {
         selectedDay={viewDay}
         onSelectDay={setSelectedDay}
       />
+
+      {hydration && (
+        <HydrationPlan data={hydration} onUpdate={onHydrationUpdate} />
+      )}
 
       <div className="grid-4" style={{ marginBottom: '1rem' }}>
         <div className="stat-card glass-stat">

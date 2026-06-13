@@ -22,10 +22,12 @@ class User(Base):
     daily_protein_target = Column(Integer, nullable=True)
     daily_carbs_target = Column(Integer, nullable=True)
     daily_fat_target = Column(Integer, nullable=True)
+    daily_water_target_ml = Column(Integer, nullable=True)
     target_reasoning = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     meals = relationship("Meal", back_populates="user", cascade="all, delete-orphan")
+    hydration_logs = relationship("HydrationLog", back_populates="user", cascade="all, delete-orphan")
     weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
     workouts = relationship("WorkoutLog", back_populates="user", cascade="all, delete-orphan")
     meal_plan = relationship("UserMealPlan", back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -96,3 +98,15 @@ class UserMealPlan(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="meal_plan")
+
+
+class HydrationLog(Base):
+    __tablename__ = "hydration_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    amount_ml = Column(Integer, default=250)
+    logged_at = Column(DateTime, default=datetime.utcnow)
+    log_date = Column(Date, default=date.today)
+
+    user = relationship("User", back_populates="hydration_logs")

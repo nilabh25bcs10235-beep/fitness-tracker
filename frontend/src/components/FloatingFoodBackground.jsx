@@ -1,18 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 
 const FLOATERS = [
-  { emoji: '🏋️', size: 2.2, path: 'wander-a', dur: 34, delay: 0 },
-  { emoji: '🚀', size: 2.5, path: 'wander-b', dur: 38, delay: 2 },
-  { emoji: '🍎', size: 2, path: 'wander-c', dur: 32, delay: 4 },
-  { emoji: '🍌', size: 1.8, path: 'wander-d', dur: 36, delay: 1 },
-  { emoji: '🍗', size: 2.1, path: 'wander-e', dur: 40, delay: 6 },
-  { emoji: '🥕', size: 1.7, path: 'wander-f', dur: 33, delay: 3 },
-  { emoji: '🍊', size: 1.9, path: 'wander-g', dur: 37, delay: 5 },
-  { emoji: '🥦', size: 1.6, path: 'wander-h', dur: 31, delay: 7 },
-  { emoji: '🍇', size: 1.8, path: 'wander-i', dur: 39, delay: 2.5 },
-  { emoji: '🥚', size: 1.5, path: 'wander-j', dur: 30, delay: 8 },
-  { emoji: '🥑', size: 1.7, path: 'wander-k', dur: 35, delay: 1.5 },
-  { emoji: '🍕', size: 2, path: 'wander-l', dur: 42, delay: 9 },
+  { emoji: '💧', size: 3.2, path: 'wander-a', dur: 28, delay: 0 },
+  { emoji: '🏋️', size: 3, path: 'wander-b', dur: 32, delay: 2 },
+  { emoji: '🚀', size: 3.4, path: 'wander-c', dur: 36, delay: 4 },
+  { emoji: '🍎', size: 2.8, path: 'wander-d', dur: 30, delay: 1 },
+  { emoji: '🍗', size: 3, path: 'wander-e', dur: 38, delay: 6 },
+  { emoji: '🥕', size: 2.6, path: 'wander-f', dur: 31, delay: 3 },
+  { emoji: '💧', size: 2.4, path: 'wander-g', dur: 26, delay: 5 },
+  { emoji: '🥦', size: 2.5, path: 'wander-h', dur: 29, delay: 7 },
+  { emoji: '🍇', size: 2.7, path: 'wander-i', dur: 35, delay: 2.5 },
+  { emoji: '🥤', size: 3.1, path: 'wander-j', dur: 27, delay: 8 },
 ];
 
 function Burst({ x, y, emoji, onDone }) {
@@ -22,11 +20,11 @@ function Burst({ x, y, emoji, onDone }) {
       style={{ left: x, top: y }}
       onAnimationEnd={onDone}
     >
-      {Array.from({ length: 8 }).map((_, i) => (
+      {Array.from({ length: 10 }).map((_, i) => (
         <span
           key={i}
           className="burst-particle"
-          style={{ '--a': `${i * 45}deg` }}
+          style={{ '--a': `${i * 36}deg` }}
         >
           {emoji}
         </span>
@@ -35,7 +33,7 @@ function Burst({ x, y, emoji, onDone }) {
   );
 }
 
-export default function FloatingFoodBackground() {
+function FloatingFoodBackground() {
   const [bursts, setBursts] = useState([]);
   const [hidden, setHidden] = useState(new Set());
 
@@ -50,14 +48,14 @@ export default function FloatingFoodBackground() {
         next.delete(id);
         return next;
       });
-    }, 2200);
+    }, 2000);
   }, []);
 
   return (
     <div className="starfield" aria-hidden="true">
       <div className="starfield-nebula" />
       <div className="starfield-grid" />
-      {Array.from({ length: 36 }).map((_, i) => (
+      {Array.from({ length: 18 }).map((_, i) => (
         <span
           key={`star-${i}`}
           className="star"
@@ -101,3 +99,5 @@ export default function FloatingFoodBackground() {
     </div>
   );
 }
+
+export default memo(FloatingFoodBackground);

@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     daily_protein_target: Optional[int]
     daily_carbs_target: Optional[int]
     daily_fat_target: Optional[int]
+    daily_water_target_ml: Optional[int] = None
     target_reasoning: Optional[str]
     created_at: datetime
 
@@ -108,6 +109,30 @@ class WorkoutResponse(BaseModel):
         from_attributes = True
 
 
+class HydrationSlot(BaseModel):
+    slot: int
+    time: str
+    amount_ml: int
+    completed: bool
+    label: str
+
+
+class HydrationLogCreate(BaseModel):
+    amount_ml: int = Field(default=250, ge=50, le=1000)
+
+
+class HydrationTodayResponse(BaseModel):
+    date: date
+    target_ml: int
+    consumed_ml: float
+    progress_pct: float
+    glasses_logged: int
+    glasses_target: int
+    glass_size_ml: int
+    schedule: List[HydrationSlot]
+    next_reminder: str
+
+
 class DayTracker(BaseModel):
     date: date
     day_name: str
@@ -116,8 +141,10 @@ class DayTracker(BaseModel):
     calorie_target: int
     protein_target: int
     workout_target_min: int
+    water_target_ml: int = 2500
     calories_consumed: float
     protein_consumed: float
+    water_consumed_ml: float = 0
     calories_burned: float
     workout_minutes: int
     meals_count: int
@@ -126,6 +153,7 @@ class DayTracker(BaseModel):
     calorie_progress_pct: float
     protein_progress_pct: float
     workout_progress_pct: float
+    water_progress_pct: float = 0
     overall_progress_pct: float
     status: str
 
@@ -162,6 +190,8 @@ class DailySummary(BaseModel):
     total_protein: float
     total_carbs: float
     total_fat: float
+    water_consumed_ml: float = 0
+    water_target_ml: Optional[int] = None
     calorie_target: Optional[int]
     protein_target: Optional[int]
     carbs_target: Optional[int]

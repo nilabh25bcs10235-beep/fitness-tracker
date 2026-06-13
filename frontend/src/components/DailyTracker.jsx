@@ -65,7 +65,7 @@ export default function DailyTracker({ tracker, selectedDay, onSelectDay }) {
         ))}
       </div>
 
-      <div className="tracker-rings">
+      <div className="tracker-rings tracker-rings-4">
         <ProgressRing
           pct={viewDay.calorie_progress_pct}
           label="Calories"
@@ -79,6 +79,13 @@ export default function DailyTracker({ tracker, selectedDay, onSelectDay }) {
           value={viewDay.protein_consumed}
           target={viewDay.protein_target}
           unit="g"
+        />
+        <ProgressRing
+          pct={viewDay.water_progress_pct ?? 0}
+          label="Water"
+          value={viewDay.water_consumed_ml ?? 0}
+          target={viewDay.water_target_ml ?? 2500}
+          unit="ml"
         />
         <ProgressRing
           pct={viewDay.workout_progress_pct}
@@ -111,6 +118,7 @@ export default function DailyTracker({ tracker, selectedDay, onSelectDay }) {
       {viewDay.is_today && (
         <div className="today-targets">
           <span className="chip">🎯 {tracker.today_targets.protein_remaining_g}g protein left</span>
+          <span className="chip">💧 {tracker.today_targets.water_remaining_ml ?? '—'}ml water left</span>
           <span className="chip">🏋️ {tracker.today_targets.workout_remaining_min} min workout left</span>
         </div>
       )}

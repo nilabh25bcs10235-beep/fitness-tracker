@@ -1,11 +1,11 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import get_user_profile
-from ..models import User, Meal, WeightLog
+from ..models import User, Meal, WeightLog, HydrationLog
 from ..schemas import (
     UserResponse,
     DailySummary,
@@ -14,26 +14,58 @@ from ..schemas import (
     WeightLogResponse,
     WeeklyTrackerResponse,
 )
-from ..llm.groq_client import estimate_body_composition, AIError
 from ..services.weekly_tracker import build_weekly_tracker
+from ..services.hydration_plan import water_target_ml
 
 router = APIRouter(prefix="/api/progress", tags=["progress"])
 
 
 def _daily_summary(user: User, target_date: date, db: Session) -> DailySummary:
     meals = db.query(Meal).filter(Meal.user_id == user.id, Meal.log_date == target_date).all()
+    hydration = db.query(HydrationLog).filter(
+        HydrationLog.user_id == user.id, HydrationLog.log_date == target_date
+    ).all()
+    water_target = user.daily_water_target_ml or water_target_ml(user.weight_kg, user.goal)
     return DailySummary(
         date=target_date,
         total_calories=sum(m.calories for m in meals),
         total_protein=sum(m.protein_g for m in meals),
         total_carbs=sum(m.carbs_g for m in meals),
         total_fat=sum(m.fat_g for m in meals),
+        water_consumed_ml=sum(h.amount_ml for h in hydration),
+        water_target_ml=water_target,
         calorie_target=user.daily_calorie_target,
         protein_target=user.daily_protein_target,
         carbs_target=user.daily_carbs_target,
         fat_target=user.daily_fat_target,
         meals_count=len(meals),
     )
+
+
+def _local_body_composition(user: User, current_weight: float, latest_log: WeightLog | None) -> dict:
+    bmi = None
+    if user.height_cm:
+        h_m = user.height_cm / 100
+        bmi = round(current_weight / (h_m * h_m), 1)
+
+    if latest_log and latest_log.body_fat_pct is not None:
+        return {
+            "current_weight_kg": current_weight,
+            "body_fat_pct": latest_log.body_fat_pct,
+            "muscle_mass_kg": latest_log.muscle_mass_kg,
+            "bmi": bmi,
+            "source": "logged",
+            "notes": "From your weight log",
+        }
+
+    return {
+        "current_weight_kg": current_weight,
+        "body_fat_pct": None,
+        "muscle_mass_kg": None,
+        "bmi": bmi,
+        "source": "profile",
+        "notes": "Upload a body photo in AI Coach for composition estimates",
+    }
 
 
 @router.get("/me/dashboard", response_model=ProgressDashboard)
@@ -74,30 +106,7 @@ def get_dashboard(user: User = Depends(get_user_profile), db: Session = Depends(
     latest = weight_logs[-1] if weight_logs else None
     current_weight = latest.weight_kg if latest else user.weight_kg
 
-    if latest and latest.body_fat_pct is not None:
-        body_composition = {
-            "current_weight_kg": current_weight,
-            "body_fat_pct": latest.body_fat_pct,
-            "muscle_mass_kg": latest.muscle_mass_kg,
-            "bmi": None,
-            "source": "logged",
-            "notes": "From your weight log",
-        }
-    else:
-        try:
-            ai_comp = estimate_body_composition(
-                user.age, user.weight_kg, user.height_cm, user.gender, user.goal
-            )
-            body_composition = {
-                "current_weight_kg": current_weight,
-                "body_fat_pct": ai_comp.get("body_fat_pct"),
-                "muscle_mass_kg": ai_comp.get("muscle_mass_kg"),
-                "bmi": ai_comp.get("bmi"),
-                "source": "groq",
-                "notes": ai_comp.get("notes", "AI estimate — log body fat for accuracy"),
-            }
-        except AIError as e:
-            raise HTTPException(status_code=503, detail=str(e))
+    body_composition = _local_body_composition(user, current_weight, latest)
 
     return ProgressDashboard(
         user=UserResponse.model_validate(user),

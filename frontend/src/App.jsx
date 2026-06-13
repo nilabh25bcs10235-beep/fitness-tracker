@@ -1,17 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import './App.css';
 import { api } from './api';
 import { supabase, supabaseConfigured } from './lib/supabase';
 import AuthScreen from './components/AuthScreen';
 import Onboarding from './components/Onboarding';
-import Dashboard from './components/Dashboard';
-import MealLogger from './components/MealLogger';
-import Recipes from './components/Recipes';
-import AIInsights from './components/AIInsights';
-import Workouts from './components/Workouts';
 import FloatingFoodBackground from './components/FloatingFoodBackground';
 import VortexTransition from './components/VortexTransition';
-import RocketLoader from './components/RocketLoader';
+
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const MealLogger = lazy(() => import('./components/MealLogger'));
+const Recipes = lazy(() => import('./components/Recipes'));
+const AIInsights = lazy(() => import('./components/AIInsights'));
+const Workouts = lazy(() => import('./components/Workouts'));
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', theme: 'dashboard' },
@@ -21,15 +21,19 @@ const TABS = [
   { id: 'ai', label: 'AI Coach', theme: 'ai' },
 ];
 
+function TabFallback() {
+  return <div className="card glass-card tab-loading">Loading...</div>;
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(!supabaseConfigured);
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('dashboard');
   const [displayTab, setDisplayTab] = useState('dashboard');
-  const [rocketLoading, setRocketLoading] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [weeklyTracker, setWeeklyTracker] = useState(null);
+  const [hydration, setHydration] = useState(null);
   const [meals, setMeals] = useState([]);
   const [recipes, setRecipes] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
@@ -38,21 +42,37 @@ export default function App() {
   const [showVortex, setShowVortex] = useState(false);
   const [appVisible, setAppVisible] = useState(false);
   const vortexTriggeredRef = useRef(false);
-  const tabTimerRef = useRef(null);
+  const mealsLoadedRef = useRef(false);
+  const recipesLoadedRef = useRef(false);
 
-  const refresh = useCallback(async () => {
-    const [dash, mealList, tracker, recipePlan] = await Promise.all([
+  const refreshCore = useCallback(async () => {
+    const [dash, tracker, hyd] = await Promise.all([
       api.getDashboard(),
-      api.getMeals(),
       api.getWeeklyTracker(),
-      api.getRecipes(),
+      api.getHydrationToday(),
     ]);
     setDashboard(dash);
-    setMeals(mealList);
     setWeeklyTracker(tracker);
-    setRecipes(recipePlan);
+    setHydration(hyd);
     setUser(dash.user);
   }, []);
+
+  const refreshMeals = useCallback(async () => {
+    const mealList = await api.getMeals();
+    setMeals(mealList);
+    mealsLoadedRef.current = true;
+  }, []);
+
+  const refresh = useCallback(async () => {
+    await refreshCore();
+    if (mealsLoadedRef.current || displayTab === 'meals') {
+      await refreshMeals();
+    }
+    if (recipesLoadedRef.current) {
+      const recipePlan = await api.getRecipes();
+      setRecipes(recipePlan);
+    }
+  }, [refreshCore, refreshMeals, displayTab]);
 
   const triggerVortex = useCallback(() => {
     vortexTriggeredRef.current = true;
@@ -68,22 +88,18 @@ export default function App() {
   const switchTab = (nextTab) => {
     if (nextTab === tab) return;
     setTab(nextTab);
-    setRocketLoading(true);
-    if (tabTimerRef.current) clearTimeout(tabTimerRef.current);
-    tabTimerRef.current = setTimeout(() => {
-      setDisplayTab(nextTab);
-      setRocketLoading(false);
-      if (nextTab === 'recipes' && !recipes) {
-        api.getRecipes().then(setRecipes).catch(() => {});
-      }
-    }, 700);
+    setDisplayTab(nextTab);
+    if (nextTab === 'meals' && !mealsLoadedRef.current) {
+      refreshMeals().catch(() => {});
+    }
+    if (nextTab === 'recipes' && !recipesLoadedRef.current) {
+      recipesLoadedRef.current = true;
+      api.getRecipes().then(setRecipes).catch(() => {});
+    }
   };
 
   useEffect(() => {
     api.health().then((h) => setAiEnabled(h.ai_enabled)).catch(() => {});
-    return () => {
-      if (tabTimerRef.current) clearTimeout(tabTimerRef.current);
-    };
   }, []);
 
   useEffect(() => {
@@ -117,8 +133,11 @@ export default function App() {
         setDashboard(null);
         setMeals([]);
         setRecipes(null);
+        setHydration(null);
         setAppVisible(false);
         vortexTriggeredRef.current = false;
+        mealsLoadedRef.current = false;
+        recipesLoadedRef.current = false;
       }
     });
 
@@ -133,10 +152,8 @@ export default function App() {
       setLoading(true);
       setError('');
       try {
-        const profile = await api.getMe();
+        await refreshCore();
         if (cancelled) return;
-        setUser(profile);
-        await refresh();
       } catch (err) {
         if (cancelled) return;
         if (err.status === 404) {
@@ -152,7 +169,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [session, refresh]);
+  }, [session, refreshCore]);
 
   const handleOnboard = async (form) => {
     setLoading(true);
@@ -165,7 +182,7 @@ export default function App() {
       };
       const profile = await api.createUser(payload);
       setUser(profile);
-      await refresh();
+      await refreshCore();
       triggerVortex();
     } catch (err) {
       setError(err.message || 'Could not create your profile');
@@ -183,18 +200,27 @@ export default function App() {
     setDashboard(null);
     setMeals([]);
     setRecipes(null);
+    setHydration(null);
     setTab('dashboard');
     setDisplayTab('dashboard');
     setAppVisible(false);
     vortexTriggeredRef.current = false;
+    mealsLoadedRef.current = false;
+    recipesLoadedRef.current = false;
   };
 
   const handleLogWeight = async () => {
     const w = prompt('Enter your current weight (kg):');
     if (!w || isNaN(w)) return;
     await api.logWeight({ weight_kg: parseFloat(w) });
-    refresh();
+    refreshCore();
   };
+
+  const handleHydrationUpdate = useCallback(async (hyd) => {
+    setHydration(hyd);
+    const tracker = await api.getWeeklyTracker();
+    setWeeklyTracker(tracker);
+  }, []);
 
   const activeTheme = TABS.find((t) => t.id === displayTab)?.theme || 'dashboard';
 
@@ -241,7 +267,6 @@ export default function App() {
   return (
     <div className={`app-root ${appVisible ? 'app-visible' : 'app-entering'}`}>
       <FloatingFoodBackground />
-      <RocketLoader active={rocketLoading} />
       <div className="app">
         <header className="app-header glass-header">
           <div>
@@ -275,20 +300,28 @@ export default function App() {
           ))}
         </nav>
 
-        <div className={`panel-box panel-${activeTheme}`}>
-          {!rocketLoading && displayTab === 'dashboard' && (
-            <Dashboard data={dashboard} tracker={weeklyTracker} onLogWeight={handleLogWeight} />
-          )}
-          {!rocketLoading && displayTab === 'meals' && (
-            <MealLogger meals={meals} onRefresh={refresh} />
-          )}
-          {!rocketLoading && displayTab === 'workouts' && (
-            <Workouts onRefresh={refresh} />
-          )}
-          {!rocketLoading && displayTab === 'recipes' && (
-            <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
-          )}
-          {!rocketLoading && displayTab === 'ai' && <AIInsights />}
+        <div className={`panel-box panel-${activeTheme} tab-panel`}>
+          <Suspense fallback={<TabFallback />}>
+            {displayTab === 'dashboard' && (
+              <Dashboard
+                data={dashboard}
+                tracker={weeklyTracker}
+                hydration={hydration}
+                onLogWeight={handleLogWeight}
+                onHydrationUpdate={handleHydrationUpdate}
+              />
+            )}
+            {displayTab === 'meals' && (
+              <MealLogger meals={meals} onRefresh={refresh} />
+            )}
+            {displayTab === 'workouts' && (
+              <Workouts onRefresh={refresh} />
+            )}
+            {displayTab === 'recipes' && (
+              <Recipes data={recipes} loading={loading} onRefresh={refresh} user={user} />
+            )}
+            {displayTab === 'ai' && <AIInsights />}
+          </Suspense>
         </div>
       </div>
       <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
