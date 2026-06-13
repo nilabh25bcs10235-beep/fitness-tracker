@@ -263,7 +263,7 @@ export default function MealLogger({ meals, onRefresh }) {
             <div style={{ fontSize: '2rem' }}>📷</div>
             <p>Upload meal photo for AI vision analysis</p>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              Groq vision estimates calories, macros & micronutrients
+              AI vision estimates calories, macros & micronutrients
             </p>
           </label>
         </div>

@@ -82,7 +82,7 @@ export default function AIInsights() {
                 {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
               </ul>
             )}
-            <span className="ai-status on">✓ Groq AI</span>
+            <span className="ai-status on">✓ AI Coach</span>
           </div>
         )}
       </div>

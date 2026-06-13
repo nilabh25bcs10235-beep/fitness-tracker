@@ -1,6 +1,6 @@
 """
-Groq LLM wrapper for FitTrack AI.
-All nutrition knowledge comes from Groq — no hardcoded fitness database.
+AI LLM wrapper for FitTrack AI.
+Primary: Groq. Silent fallback: Gemini when Groq errors or credits are exhausted.
 """
 
 import os
@@ -9,14 +9,14 @@ import base64
 from typing import Dict, Optional
 from openai import OpenAI
 
+from . import gemini_provider
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# Reads from environment variable (Render, Vercel, Railway, etc.)
-# The variable must be named exactly GROQ_API_KEY
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.1-8b-instant")
 VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
@@ -28,42 +28,111 @@ if GROQ_API_KEY:
     except TypeError as exc:
         print(f"⚠️  Failed to initialize Groq client: {exc}")
 
+_USER_ERROR = "AI analysis is temporarily unavailable. Please try again in a moment."
+
 
 class AIError(Exception):
     pass
 
 
 def _ai_available() -> bool:
-    return client is not None
+    return client is not None or gemini_provider.is_available()
 
 
 def _require_ai():
     if not _ai_available():
-        raise AIError(
-            "GROQ_API_KEY not configured. "
-            "Make sure the GROQ_API_KEY environment variable is set "
-            "(e.g. in Render, Railway, or your hosting platform)."
-        )
+        raise AIError(_USER_ERROR)
 
 
 def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:
     _require_ai()
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-            temperature=0.4,
-            max_tokens=900,
-            response_format={"type": "json_object"},
-        )
-        return json.loads(response.choices[0].message.content)
-    except AIError:
-        raise
-    except Exception as e:
-        raise AIError(f"Groq API error: {e}") from e
+    groq_error: Optional[Exception] = None
+
+    if client is not None:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                temperature=0.4,
+                max_tokens=900,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as exc:
+            groq_error = exc
+            print(f"Groq text request failed, falling back to Gemini: {exc}")
+
+    if gemini_provider.is_available():
+        try:
+            return gemini_provider.chat_json(system, user)
+        except Exception as exc:
+            print(f"Gemini text request failed: {exc}")
+            if groq_error:
+                print(f"Original Groq error: {groq_error}")
+
+    raise AIError(_USER_ERROR)
+
+
+def _vision_json(
+    system: str,
+    user_text: str,
+    image_bytes: bytes,
+    *,
+    max_tokens: int = 1000,
+) -> Dict:
+    _require_ai()
+    groq_error: Optional[Exception] = None
+    b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    if client is not None:
+        try:
+            response = client.chat.completions.create(
+                model=VISION_MODEL,
+                messages=[
+                    {"role": "system", "content": system},
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": user_text},
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+                            },
+                        ],
+                    },
+                ],
+                temperature=0.3,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as exc:
+            groq_error = exc
+            print(f"Groq vision request failed, falling back to Gemini: {exc}")
+
+    if gemini_provider.is_available():
+        try:
+            return gemini_provider.vision_json(
+                system,
+                user_text,
+                image_bytes,
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            print(f"Gemini vision request failed: {exc}")
+            if groq_error:
+                print(f"Original Groq error: {groq_error}")
+
+    raise AIError(_USER_ERROR)
+
+
+def _ai_result(payload: Dict) -> Dict:
+    payload["is_ai"] = True
+    payload["source"] = "ai"
+    return payload
 
 
 def calculate_targets(
@@ -161,22 +230,11 @@ Return ONLY valid JSON:
   "micro_description": "2-3 sentence plain-language summary of micronutrient highlights"
 }"""
     user = f"Meal: {description}\nDietary restrictions: {dietary_restrictions or 'none'}"
-    result = _chat_json(system, user)
-    result["is_ai"] = True
-    result["source"] = "groq"
-    return result
+    return _ai_result(_chat_json(system, user))
 
 
 def analyze_meal_image(image_bytes: bytes, dietary_restrictions: str = "") -> Dict:
-    _require_ai()
-    try:
-        b64 = base64.b64encode(image_bytes).decode("utf-8")
-        response = client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a strict nutrition vision expert for Indian and global meals.
+    system = """You are a strict nutrition vision expert for Indian and global meals.
 Identify food items in the image and estimate nutrition realistically.
 
 Be conservative for burgers, waffles, fried foods, fast food, desserts, and oily restaurant meals.
@@ -207,34 +265,9 @@ Return ONLY valid JSON:
     "saturated_fat_g": number
   },
   "micro_description": "2-3 sentence micronutrient summary"
-}""",
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Analyze this meal photo. Dietary restrictions: {dietary_restrictions or 'none'}",
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-                        },
-                    ],
-                },
-            ],
-            temperature=0.3,
-            max_tokens=1000,
-            response_format={"type": "json_object"},
-        )
-        result = json.loads(response.choices[0].message.content)
-        result["is_ai"] = True
-        result["source"] = "groq"
-        return result
-    except AIError:
-        raise
-    except Exception as e:
-        raise AIError(f"Vision analysis failed: {e}") from e
+}"""
+    user_text = f"Analyze this meal photo. Dietary restrictions: {dietary_restrictions or 'none'}"
+    return _ai_result(_vision_json(system, user_text, image_bytes))
 
 
 def generate_recipes(
@@ -280,15 +313,7 @@ def analyze_body_image(
     image_bytes: bytes,
     user_context: Dict,
 ) -> Dict:
-    _require_ai()
-    try:
-        b64 = base64.b64encode(image_bytes).decode("utf-8")
-        response = client.chat.completions.create(
-            model=VISION_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": """You are a fitness assessor analyzing a full-body photo.
+    system = """You are a fitness assessor analyzing a full-body photo.
 Estimate BMI range, body composition, and give nutritional goal advice.
 This is an AI estimate only — not medical advice. Return ONLY valid JSON:
 {
@@ -299,34 +324,9 @@ This is an AI estimate only — not medical advice. Return ONLY valid JSON:
   "nutritional_advice": "2-3 sentences tailored to their goal",
   "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"],
   "confidence": "high|medium|low"
-}""",
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Analyze this full-body image. User profile: {json.dumps(user_context)}",
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
-                        },
-                    ],
-                },
-            ],
-            temperature=0.3,
-            max_tokens=1200,
-            response_format={"type": "json_object"},
-        )
-        result = json.loads(response.choices[0].message.content)
-        result["is_ai"] = True
-        result["source"] = "groq"
-        return result
-    except AIError:
-        raise
-    except Exception as e:
-        raise AIError(f"Body image analysis failed: {e}") from e
+}"""
+    user_text = f"Analyze this full-body image. User profile: {json.dumps(user_context)}"
+    return _ai_result(_vision_json(system, user_text, image_bytes, max_tokens=1200))
 
 
 def get_exercise_plan(
@@ -398,7 +398,4 @@ Return ONLY valid JSON:
         f"Profile: {json.dumps(user_context)}\n"
         f"Today's intake: {json.dumps(today_macros)}"
     )
-    result = _chat_json(system, user)
-    result["is_ai"] = True
-    result["source"] = "groq"
-    return result
+    return _ai_result(_chat_json(system, user))

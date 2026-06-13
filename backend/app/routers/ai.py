@@ -78,7 +78,7 @@ def get_insight(
         answer=result.get("answer", ""),
         suggestions=result.get("suggestions", []),
         is_ai=True,
-        source="groq",
+        source="ai",
     )
 
 

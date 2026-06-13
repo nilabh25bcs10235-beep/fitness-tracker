@@ -280,7 +280,7 @@ export default function App() {
           </div>
           <div className="header-actions">
             <span className={`ai-status ${aiEnabled ? 'on' : ''}`}>
-              {aiEnabled ? '● Groq AI Online' : '○ Groq AI Offline'}
+              {aiEnabled ? '● AI Coach Online' : '○ AI Coach Offline'}
             </span>
             <button type="button" className="btn btn-ghost" onClick={handleLogout}>
               Sign out

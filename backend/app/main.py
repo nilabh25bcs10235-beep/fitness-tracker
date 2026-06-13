@@ -60,6 +60,10 @@ if os.getenv("GROQ_API_KEY"):
     print("✅ GROQ_API_KEY detected from environment (Render / hosting platform)")
 else:
     print("⚠️  WARNING: GROQ_API_KEY is NOT set in the environment!")
+if os.getenv("GEMINI_API_KEY"):
+    print("✅ GEMINI_API_KEY detected — Gemini fallback enabled")
+else:
+    print("ℹ️  GEMINI_API_KEY not set — no Gemini fallback")
 
 _default_origins = "http://localhost:5173,http://127.0.0.1:5173,https://fitness-tracker90.vercel.app"
 _allowed_origins = [

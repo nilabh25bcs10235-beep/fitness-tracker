@@ -16,6 +16,10 @@ services:
         value: llama-3.1-8b-instant
       - key: GROQ_VISION_MODEL
         value: llama-3.2-90b-vision-preview
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL
