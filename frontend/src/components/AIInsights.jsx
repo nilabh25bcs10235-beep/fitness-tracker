@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 
 const QUICK_PROMPTS = [
@@ -8,25 +8,155 @@ const QUICK_PROMPTS = [
   'Suggest a pre-workout meal',
 ];
 
-export default function AIInsights() {
-  const [query, setQuery] = useState('');
-  const [result, setResult] = useState(null);
-  const [bodyResult, setBodyResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [bodyLoading, setBodyLoading] = useState(false);
+function formatWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
 
-  const ask = async (q) => {
-    const text = q || query;
-    if (!text.trim()) return;
+export default function AIInsights() {
+  const [conversationId, setConversationId] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [conversations, setConversations] = useState([]);
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [initLoading, setInitLoading] = useState(true);
+  const [showManage, setShowManage] = useState(false);
+  const [bodyResult, setBodyResult] = useState(null);
+  const [bodyLoading, setBodyLoading] = useState(false);
+  const [error, setError] = useState('');
+  const chatEndRef = useRef(null);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
+  const loadConversation = useCallback(async (id) => {
+    const conv = await api.getCoachConversation(id);
+    setConversationId(conv.id);
+    setMessages(conv.messages || []);
+    setError('');
+  }, []);
+
+  const refreshConversationList = useCallback(async () => {
+    const list = await api.listCoachConversations();
+    setConversations(list);
+    return list;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await refreshConversationList();
+        if (cancelled) return;
+        if (list.length > 0) {
+          await loadConversation(list[0].id);
+        } else {
+          const conv = await api.createCoachConversation();
+          if (cancelled) return;
+          setConversationId(conv.id);
+          setMessages([]);
+          await refreshConversationList();
+        }
+      } catch (e) {
+        if (!cancelled) setError(e.message);
+      } finally {
+        if (!cancelled) setInitLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loadConversation, refreshConversationList]);
+
+  const sendMessage = async (text) => {
+    const content = (text || query).trim();
+    if (!content || !conversationId || loading) return;
+
+    const optimistic = {
+      id: `tmp-${Date.now()}`,
+      role: 'user',
+      content,
+      suggestions: [],
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    setQuery('');
     setLoading(true);
+    setError('');
+
     try {
-      const res = await api.getInsight(text);
-      setResult(res);
-      if (!q) setQuery(text);
+      const res = await api.sendCoachMessage(conversationId, content);
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== optimistic.id),
+        optimistic,
+        res.message,
+      ]);
+      await refreshConversationList();
     } catch (e) {
-      setResult({ answer: e.message, suggestions: [], is_ai: false });
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setQuery(content);
+      setError(e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startNewConversation = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const conv = await api.createCoachConversation();
+      setConversationId(conv.id);
+      setMessages([]);
+      setQuery('');
+      setShowManage(false);
+      await refreshConversationList();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openConversation = async (id) => {
+    setLoading(true);
+    setError('');
+    try {
+      await loadConversation(id);
+      setShowManage(false);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteConversation = async (id) => {
+    setError('');
+    try {
+      await api.deleteCoachConversation(id);
+      const list = await refreshConversationList();
+      if (id === conversationId) {
+        if (list.length > 0) {
+          await loadConversation(list[0].id);
+        } else {
+          const conv = await api.createCoachConversation();
+          setConversationId(conv.id);
+          setMessages([]);
+          await refreshConversationList();
+        }
+      }
+    } catch (e) {
+      setError(e.message);
     }
   };
 
@@ -44,47 +174,149 @@ export default function AIInsights() {
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  const activeTitle = conversations.find((c) => c.id === conversationId)?.title || 'AI Coach';
+
   return (
     <div>
       <div className="card ai-greeting-card">
-        <h2>AI Coach</h2>
-        <p className="ai-greeting">HI HOW CAN I HELP YOU TODAY?</p>
+        <div className="coach-header">
+          <div>
+            <h2>AI Coach</h2>
+            <p className="ai-greeting">HI HOW CAN I HELP YOU TODAY?</p>
+          </div>
+          <div className="coach-actions">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={startNewConversation}
+              disabled={loading || initLoading}
+            >
+              New conversation
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setShowManage((v) => !v)}
+              disabled={initLoading}
+            >
+              Manage conversations
+            </button>
+          </div>
+        </div>
         <p style={{ color: 'var(--muted)' }}>
-          Ask anything about nutrition, training, or upload a full-body photo for BMI & goal advice.
+          Chat about nutrition and training, or upload a full-body photo for BMI and goal advice.
         </p>
       </div>
 
-      <div className="card">
+      {showManage && (
+        <div className="card coach-manage-panel">
+          <div className="coach-manage-header">
+            <h3>Your conversations</h3>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowManage(false)}>
+              Close
+            </button>
+          </div>
+          {conversations.length === 0 ? (
+            <p style={{ color: 'var(--muted)' }}>No conversations yet. Start chatting below.</p>
+          ) : (
+            <ul className="coach-convo-list">
+              {conversations.map((c) => (
+                <li key={c.id} className={c.id === conversationId ? 'active' : ''}>
+                  <button type="button" className="coach-convo-open" onClick={() => openConversation(c.id)}>
+                    <span className="coach-convo-title">{c.title}</span>
+                    <span className="coach-convo-meta">
+                      {c.message_count} messages · {formatWhen(c.updated_at)}
+                    </span>
+                    {c.preview && <span className="coach-convo-preview">{c.preview}</span>}
+                  </button>
+                  <button
+                    type="button"
+                    className="coach-convo-delete"
+                    onClick={() => deleteConversation(c.id)}
+                    aria-label={`Delete ${c.title}`}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="card coach-chat-card">
+        <div className="coach-chat-title">
+          <span>{activeTitle}</span>
+          <span className="ai-status on">✓ AI Coach Online</span>
+        </div>
+
+        <div className="coach-chat-thread">
+          {initLoading ? (
+            <p style={{ color: 'var(--muted)' }}>Loading conversation...</p>
+          ) : messages.length === 0 ? (
+            <p className="coach-chat-empty">Ask anything — follow-up questions work too.</p>
+          ) : (
+            messages.map((m) => (
+              <div key={m.id} className={`coach-bubble coach-bubble-${m.role}`}>
+                <p>{m.content}</p>
+                {m.role === 'assistant' && m.suggestions?.length > 0 && (
+                  <ul className="coach-suggestions">
+                    {m.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                )}
+                <span className="coach-bubble-time">{formatWhen(m.created_at)}</span>
+              </div>
+            ))
+          )}
+          {loading && (
+            <div className="coach-bubble coach-bubble-assistant coach-bubble-thinking">
+              <p>Thinking...</p>
+            </div>
+          )}
+          <div ref={chatEndRef} />
+        </div>
+
         <div className="chip-row" style={{ marginBottom: '1rem' }}>
           {QUICK_PROMPTS.map((p) => (
-            <button key={p} type="button" className="chip" style={{ cursor: 'pointer' }} onClick={() => ask(p)}>
+            <button
+              key={p}
+              type="button"
+              className="chip"
+              style={{ cursor: 'pointer' }}
+              onClick={() => sendMessage(p)}
+              disabled={loading || initLoading}
+            >
               {p}
             </button>
           ))}
         </div>
 
-        <div className="form-group">
+        <div className="coach-input-row">
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask your AI coach anything..."
+            onKeyDown={handleKeyDown}
+            placeholder="Continue the conversation..."
+            disabled={loading || initLoading || !conversationId}
+            rows={2}
           />
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => sendMessage()}
+            disabled={loading || initLoading || !conversationId || !query.trim()}
+          >
+            {loading ? 'Sending...' : 'Send'}
+          </button>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => ask()} disabled={loading}>
-          {loading ? 'Thinking...' : 'Ask AI'}
-        </button>
-
-        {result && (
-          <div className="insight-box">
-            <p>{result.answer}</p>
-            {result.suggestions?.length > 0 && (
-              <ul>
-                {result.suggestions.map((s, i) => <li key={i}>{s}</li>)}
-              </ul>
-            )}
-            <span className="ai-status on">✓ AI Coach</span>
-          </div>
-        )}
+        {error && <p className="error">{error}</p>}
       </div>
 
       <div className="card">

@@ -6,7 +6,7 @@ Primary: Groq. Silent fallback: Gemini when Groq errors or credits are exhausted
 import os
 import json
 import base64
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 from openai import OpenAI
 
 from . import gemini_provider
@@ -70,6 +70,39 @@ def _chat_json(system: str, user: str, model: str = TEXT_MODEL) -> Dict:
             return gemini_provider.chat_json(system, user)
         except Exception as exc:
             print(f"Gemini text request failed: {exc}")
+            if groq_error:
+                print(f"Original Groq error: {groq_error}")
+
+    raise AIError(_USER_ERROR)
+
+
+def _chat_json_messages(system: str, messages: List[Dict], model: str = TEXT_MODEL) -> Dict:
+    _require_ai()
+    if not messages:
+        raise AIError(_USER_ERROR)
+
+    groq_error: Optional[Exception] = None
+    full_messages = [{"role": "system", "content": system}, *messages]
+
+    if client is not None:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=full_messages,
+                temperature=0.4,
+                max_tokens=900,
+                response_format={"type": "json_object"},
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as exc:
+            groq_error = exc
+            print(f"Groq chat request failed, falling back to Gemini: {exc}")
+
+    if gemini_provider.is_available():
+        try:
+            return gemini_provider.chat_json_messages(system, messages)
+        except Exception as exc:
+            print(f"Gemini chat request failed: {exc}")
             if groq_error:
                 print(f"Original Groq error: {groq_error}")
 
@@ -386,16 +419,24 @@ def get_smart_insight(
     user_context: Dict,
     today_macros: Dict,
 ) -> Dict:
-    system = """You are FitTrack AI, a friendly fitness and nutrition coach.
-Give practical, specific advice tailored to the user's profile and today's intake.
-Return ONLY valid JSON:
-{
-  "answer": "2-4 sentence helpful answer",
-  "suggestions": ["actionable tip 1", "tip 2", "tip 3"]
-}"""
-    user = (
-        f"User question: {query}\n"
-        f"Profile: {json.dumps(user_context)}\n"
-        f"Today's intake: {json.dumps(today_macros)}"
+    return coach_reply([{"role": "user", "content": query}], user_context, today_macros)
+
+
+def coach_reply(
+    messages: List[Dict],
+    user_context: Dict,
+    today_macros: Dict,
+) -> Dict:
+    system = (
+        "You are FitTrack AI, a friendly fitness and nutrition coach. "
+        "Give practical, specific advice tailored to the user's profile and today's intake. "
+        "Continue the conversation naturally — reference earlier messages when relevant.\n"
+        f"User profile: {json.dumps(user_context)}\n"
+        f"Today's intake: {json.dumps(today_macros)}\n"
+        "Return ONLY valid JSON:\n"
+        "{\n"
+        '  "answer": "2-4 sentence helpful answer",\n'
+        '  "suggestions": ["actionable tip 1", "tip 2", "tip 3"]\n'
+        "}"
     )
-    return _ai_result(_chat_json(system, user))
+    return _ai_result(_chat_json_messages(system, messages))

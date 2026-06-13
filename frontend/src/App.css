@@ -1018,6 +1018,195 @@ textarea {
   color: var(--accent);
 }
 
+.coach-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.coach-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.coach-chat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.coach-chat-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+.coach-chat-thread {
+  min-height: 220px;
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+  background: rgba(8, 10, 22, 0.45);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+}
+
+.coach-chat-empty {
+  color: var(--muted);
+  margin: auto;
+  text-align: center;
+}
+
+.coach-bubble {
+  max-width: 88%;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  font-size: 0.95rem;
+}
+
+.coach-bubble-user {
+  align-self: flex-end;
+  background: rgba(99, 102, 241, 0.22);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+}
+
+.coach-bubble-assistant {
+  align-self: flex-start;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.coach-bubble-thinking {
+  opacity: 0.7;
+}
+
+.coach-bubble p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.coach-suggestions {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.coach-bubble-time {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.coach-input-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.coach-input-row textarea {
+  flex: 1;
+  min-height: 56px;
+  resize: vertical;
+}
+
+.coach-manage-panel {
+  margin-bottom: 0.75rem;
+}
+
+.coach-manage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.coach-convo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.coach-convo-list li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(12, 14, 28, 0.5);
+}
+
+.coach-convo-list li.active {
+  border-color: rgba(99, 102, 241, 0.45);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+.coach-convo-open {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.coach-convo-open:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.coach-convo-title {
+  font-weight: 600;
+}
+
+.coach-convo-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.coach-convo-preview {
+  font-size: 0.85rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coach-convo-delete {
+  border: none;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fca5a5;
+  padding: 0 0.9rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.coach-convo-delete:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
 .daily-tracker {
   border-color: rgba(34, 211, 238, 0.25);
 }

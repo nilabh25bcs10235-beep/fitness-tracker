@@ -48,6 +48,31 @@ def chat_json(system: str, user: str, temperature: float = 0.4, max_tokens: int 
     return json.loads(response.text)
 
 
+def chat_json_messages(
+    system: str,
+    messages: list,
+    temperature: float = 0.4,
+    max_tokens: int = 900,
+) -> dict:
+    import google.generativeai as genai
+
+    if not messages:
+        raise ValueError("messages must not be empty")
+
+    model = genai.GenerativeModel(GEMINI_MODEL, system_instruction=system)
+    history = []
+    for msg in messages[:-1]:
+        role = "user" if msg["role"] == "user" else "model"
+        history.append({"role": role, "parts": [msg["content"]]})
+
+    chat = model.start_chat(history=history)
+    response = chat.send_message(
+        messages[-1]["content"],
+        generation_config=_generation_config(temperature, max_tokens),
+    )
+    return json.loads(response.text)
+
+
 def vision_json(
     system: str,
     user_text: str,

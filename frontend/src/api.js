@@ -243,6 +243,31 @@ export const api = {
       body: JSON.stringify({ query }),
     }),
 
+  listCoachConversations: () =>
+    cachedGet('/api/ai/me/conversations', TTL.default),
+
+  createCoachConversation: () => {
+    invalidateApiCache('/api/ai/me/conversations');
+    return request('/api/ai/me/conversations', { method: 'POST' });
+  },
+
+  getCoachConversation: (id) =>
+    request(`/api/ai/me/conversations/${id}`),
+
+  deleteCoachConversation: (id) => {
+    invalidateApiCache('/api/ai/me/conversations');
+    return request(`/api/ai/me/conversations/${id}`, { method: 'DELETE' });
+  },
+
+  sendCoachMessage: (conversationId, content) => {
+    invalidateApiCache('/api/ai/me/conversations');
+    return request(`/api/ai/me/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    });
+  },
+
   analyzeBodyImage: async (file) => {
     const form = new FormData();
     form.append('file', file);

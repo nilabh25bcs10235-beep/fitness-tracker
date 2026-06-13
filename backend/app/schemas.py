@@ -332,3 +332,46 @@ class InsightResponse(BaseModel):
     suggestions: List[str]
     is_ai: bool
     source: str = "groq"
+
+
+class CoachMessageCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class CoachMessageResponse(BaseModel):
+    id: int
+    role: str
+    content: str
+    suggestions: List[str] = []
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CoachConversationSummary(BaseModel):
+    id: int
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+    preview: str = ""
+
+    class Config:
+        from_attributes = True
+
+
+class CoachConversationResponse(BaseModel):
+    id: int
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    messages: List[CoachMessageResponse]
+
+    class Config:
+        from_attributes = True
+
+
+class CoachChatResponse(BaseModel):
+    conversation_id: int
+    message: CoachMessageResponse

@@ -31,6 +31,9 @@ class User(Base):
     weight_logs = relationship("WeightLog", back_populates="user", cascade="all, delete-orphan")
     workouts = relationship("WorkoutLog", back_populates="user", cascade="all, delete-orphan")
     meal_plan = relationship("UserMealPlan", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    coach_conversations = relationship(
+        "CoachConversation", back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Meal(Base):
@@ -98,6 +101,37 @@ class UserMealPlan(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user = relationship("User", back_populates="meal_plan")
+
+
+class CoachConversation(Base):
+    __tablename__ = "coach_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), default="New conversation")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user = relationship("User", back_populates="coach_conversations")
+    messages = relationship(
+        "CoachMessage",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="CoachMessage.created_at",
+    )
+
+
+class CoachMessage(Base):
+    __tablename__ = "coach_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(Integer, ForeignKey("coach_conversations.id"), nullable=False)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    suggestions_json = Column(Text, default="[]")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    conversation = relationship("CoachConversation", back_populates="messages")
 
 
 class HydrationLog(Base):
