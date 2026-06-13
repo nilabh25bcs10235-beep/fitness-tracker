@@ -19,7 +19,10 @@ except ImportError:
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 TEXT_MODEL = os.getenv("GROQ_TEXT_MODEL", "llama-3.1-8b-instant")
-VISION_MODEL = os.getenv("GROQ_VISION_MODEL", "llama-3.2-90b-vision-preview")
+VISION_MODEL = os.getenv(
+    "GROQ_VISION_MODEL",
+    "meta-llama/llama-4-scout-17b-16e-instruct",
+)
 
 client = None
 if GROQ_API_KEY:
@@ -116,10 +119,22 @@ def _vision_json(
     *,
     max_tokens: int = 1000,
 ) -> Dict:
-    """Server fallback for vision — primary path is Puter.js in the browser."""
+    """Vision: Gemini first, then Groq (llama-4-scout). Puter.js is last on the client."""
     _require_ai()
-    groq_error: Optional[Exception] = None
+    gemini_error: Optional[Exception] = None
     b64 = base64.b64encode(image_bytes).decode("utf-8")
+
+    if gemini_provider.is_available():
+        try:
+            return gemini_provider.vision_json(
+                system,
+                user_text,
+                image_bytes,
+                max_tokens=max_tokens,
+            )
+        except Exception as exc:
+            gemini_error = exc
+            print(f"Gemini vision request failed, falling back to Groq: {exc}")
 
     if client is not None:
         try:
@@ -144,21 +159,9 @@ def _vision_json(
             )
             return json.loads(response.choices[0].message.content)
         except Exception as exc:
-            groq_error = exc
-            print(f"Groq vision request failed, falling back to Gemini: {exc}")
-
-    if gemini_provider.is_available():
-        try:
-            return gemini_provider.vision_json(
-                system,
-                user_text,
-                image_bytes,
-                max_tokens=max_tokens,
-            )
-        except Exception as exc:
-            print(f"Gemini vision request failed: {exc}")
-            if groq_error:
-                print(f"Original Groq error: {groq_error}")
+            print(f"Groq vision request failed: {exc}")
+            if gemini_error:
+                print(f"Original Gemini error: {gemini_error}")
 
     raise AIError(_USER_ERROR)
 

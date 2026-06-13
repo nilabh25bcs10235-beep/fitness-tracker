@@ -47,39 +47,41 @@ This is an AI estimate only — not medical advice. Return ONLY valid JSON:
   "confidence": "high|medium|low"
 }`;
 
-async function analyzeWithPuterThenServer({
+async function analyzeWithServerThenPuter({
   file,
   systemPrompt,
   userPrompt,
-  serverFallback,
+  serverAnalyze,
 }) {
-  if (isPuterAvailable()) {
-    try {
-      return await puterVisionJson({ systemPrompt, userPrompt, file });
-    } catch (err) {
-      console.warn('Puter vision unavailable, using server fallback:', err);
-    }
+  try {
+    return await serverAnalyze();
+  } catch (err) {
+    console.warn('Server vision unavailable, trying Puter fallback:', err);
   }
 
-  return serverFallback();
+  if (isPuterAvailable()) {
+    return puterVisionJson({ systemPrompt, userPrompt, file });
+  }
+
+  throw new Error('Vision analysis unavailable. Check server API keys or network.');
 }
 
 export function analyzeMealImageVision(file, dietaryRestrictions = '') {
   const userPrompt = `Analyze this meal photo. Dietary restrictions: ${dietaryRestrictions || 'none'}`;
-  return analyzeWithPuterThenServer({
+  return analyzeWithServerThenPuter({
     file,
     systemPrompt: MEAL_VISION_SYSTEM,
     userPrompt,
-    serverFallback: () => api.analyzeMealImage(file),
+    serverAnalyze: () => api.analyzeMealImage(file),
   });
 }
 
 export function analyzeBodyImageVision(file, userContext = {}) {
   const userPrompt = `Analyze this full-body image. User profile: ${JSON.stringify(userContext)}`;
-  return analyzeWithPuterThenServer({
+  return analyzeWithServerThenPuter({
     file,
     systemPrompt: BODY_VISION_SYSTEM,
     userPrompt,
-    serverFallback: () => api.analyzeBodyImage(file),
+    serverAnalyze: () => api.analyzeBodyImage(file),
   });
 }

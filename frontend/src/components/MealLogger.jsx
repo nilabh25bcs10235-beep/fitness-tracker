@@ -272,7 +272,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
             <div style={{ fontSize: '2rem' }}>📷</div>
             <p>Upload meal photo for AI vision analysis</p>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              AI vision (Puter.js) estimates calories, macros & micronutrients
+              AI vision estimates calories, macros & micronutrients
             </p>
           </label>
         </div>
