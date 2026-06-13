@@ -7,7 +7,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { detectPowerWords, SUCCESS_QUOTES, VITALITY_QUOTES } from '../lib/vitalityQuotes';
+import {
+  detectPowerWords,
+  FOCUS_QUOTES,
+  SUCCESS_QUOTES,
+  THEME_TO_CONTEXT,
+  VITALITY_QUOTES,
+  pickQuote,
+} from '../lib/vitalityQuotes';
 
 const VitalityContext = createContext(null);
 
@@ -33,7 +40,9 @@ export function VitalityProvider({ context = 'dashboard', children }) {
   const [pulse, setPulse] = useState(null);
   const [successWave, setSuccessWave] = useState(0);
   const [quoteHighlight, setQuoteHighlight] = useState(null);
+  const [quoteFocus, setQuoteFocus] = useState(null);
   const decayRef = useRef(null);
+  const focusQuoteRef = useRef(null);
 
   const setIntensity = useCallback((level) => {
     setIntensityState(level);
@@ -44,18 +53,25 @@ export function VitalityProvider({ context = 'dashboard', children }) {
     }
   }, []);
 
-  const signalFocus = useCallback((rect) => {
+  const signalFocus = useCallback((rect, fieldTheme) => {
     if (!rect) return;
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     setFocusPoint({ x, y, t: Date.now() });
     setTypingEnergy((e) => Math.max(e, 0.3));
-  }, []);
+
+    const quoteContext = THEME_TO_CONTEXT[fieldTheme] || context;
+    const pool = FOCUS_QUOTES[quoteContext] || FOCUS_QUOTES.dashboard;
+    const text = pickQuote(pool, focusQuoteRef.current);
+    focusQuoteRef.current = text;
+    setQuoteFocus({ text, t: Date.now() });
+  }, [context]);
 
   const signalBlur = useCallback(() => {
     setFocusPoint(null);
     setTypingEnergy(0);
     setPowerMode(false);
+    setTimeout(() => setQuoteFocus(null), 1800);
   }, []);
 
   const signalTyping = useCallback((text, _theme) => {
@@ -82,7 +98,7 @@ export function VitalityProvider({ context = 'dashboard', children }) {
     setSuccessWave(Date.now());
     const msg = SUCCESS_QUOTES[area] || SUCCESS_QUOTES.default;
     setQuoteHighlight({ text: msg, t: Date.now() });
-    setTimeout(() => setQuoteHighlight(null), 4200);
+    setTimeout(() => setQuoteHighlight(null), 5500);
   }, []);
 
   useEffect(() => () => {
@@ -101,6 +117,7 @@ export function VitalityProvider({ context = 'dashboard', children }) {
       pulse,
       successWave,
       quoteHighlight,
+      quoteFocus,
       quotes: VITALITY_QUOTES[context] || VITALITY_QUOTES.dashboard,
       signalFocus,
       signalBlur,
@@ -117,6 +134,7 @@ export function VitalityProvider({ context = 'dashboard', children }) {
       pulse,
       successWave,
       quoteHighlight,
+      quoteFocus,
       setIntensity,
       signalFocus,
       signalBlur,

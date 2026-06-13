@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
   --bg: #030308;
@@ -2137,54 +2137,117 @@ button.chip:active {
 .vitality-quotes {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0 2rem 12vh;
   z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
 }
 
 .vitality-quote {
   position: absolute;
-  max-width: 520px;
-  text-align: center;
-  font-size: clamp(0.95rem, 2vw, 1.15rem);
+  margin: 0;
+  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
   font-weight: 500;
-  letter-spacing: 0.02em;
-  line-height: 1.5;
-  color: rgba(186, 230, 253, 0.55);
+  font-style: italic;
+  letter-spacing: 0.03em;
+  line-height: 1.45;
   opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 1.4s ease, transform 1.4s ease;
-  text-shadow: 0 0 40px rgba(34, 211, 238, 0.08);
+  transform: translateY(10px);
+  transition: opacity 3.2s ease, transform 3.2s ease, text-shadow 2.5s ease;
+  text-shadow: 0 0 32px rgba(34, 211, 238, 0.04);
   pointer-events: none;
+  user-select: none;
 }
 
+/* Ambient — 5–9% opacity in margin zones, never over main content */
 .vitality-quote.ambient {
-  opacity: 0;
-  color: rgba(148, 163, 184, 0.45);
+  color: rgba(186, 230, 253, 0.9);
+  max-width: min(280px, 28vw);
+}
+
+.vitality-quote.ambient.slot-bl {
+  left: 2.5%;
+  bottom: 12%;
+  text-align: left;
+}
+
+.vitality-quote.ambient.slot-tr {
+  right: 3%;
+  top: 16%;
+  text-align: right;
+  max-width: min(260px, 26vw);
 }
 
 .vitality-quote.ambient.visible {
-  opacity: 0.09;
+  opacity: 0.07;
   transform: translateY(0);
 }
 
-.vitality-quote.highlight {
-  bottom: 14vh;
-  font-size: clamp(0.88rem, 1.8vw, 1.05rem);
-  color: rgba(103, 232, 249, 0.75);
+.vitality-quote.ambient.slot-tr.visible {
+  opacity: 0.05;
 }
 
-.vitality-quote.highlight.visible {
-  opacity: 0.16;
+/* Focus — gentle glow when typing in a field (up to ~11%) */
+.vitality-quote.focus {
+  max-width: min(300px, 32vw);
+  text-align: left;
+  color: rgba(103, 232, 249, 0.95);
+  z-index: 2;
+}
+
+.vitality-quote.focus.visible {
+  opacity: 0.1;
   transform: translateY(0);
-  animation: quote-glow 4s ease-in-out;
+  animation: quote-focus-glow 3s ease-in-out infinite;
 }
 
-@keyframes quote-glow {
-  0%, 100% { text-shadow: 0 0 24px rgba(34, 211, 238, 0.1); }
-  50% { text-shadow: 0 0 48px rgba(34, 211, 238, 0.22); }
+.vitality-quote.focus.typing.visible {
+  opacity: 0.12;
+}
+
+/* Save / log micro-reward — brief affirming quote */
+.vitality-quote.reward {
+  left: 50%;
+  bottom: 10vh;
+  transform: translateX(-50%) translateY(12px);
+  max-width: min(440px, 88vw);
+  text-align: center;
+  color: rgba(167, 243, 208, 0.95);
+  font-size: clamp(1rem, 2vw, 1.2rem);
+}
+
+.vitality-quote.reward.visible {
+  opacity: 0.12;
+  transform: translateX(-50%) translateY(0);
+  animation: quote-reward-glow 5.5s ease-in-out;
+}
+
+@keyframes quote-focus-glow {
+  0%, 100% { text-shadow: 0 0 20px rgba(34, 211, 238, 0.08); }
+  50% { text-shadow: 0 0 40px rgba(34, 211, 238, 0.18); }
+}
+
+@keyframes quote-reward-glow {
+  0% { opacity: 0; transform: translateX(-50%) translateY(14px); }
+  12% { opacity: 0.12; transform: translateX(-50%) translateY(0); }
+  75% { opacity: 0.1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+}
+
+.vitality-quotes[data-context="dashboard"] .vitality-quote.ambient {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.vitality-quotes[data-context="workouts"] .vitality-quote.focus.visible {
+  color: rgba(251, 191, 36, 0.9);
+}
+
+.vitality-quotes[data-context="meals"] .vitality-quote.focus.visible {
+  color: rgba(52, 211, 153, 0.9);
+}
+
+.vitality-quotes[data-context="ai"] .vitality-quote.ambient.visible {
+  opacity: 0.08;
 }
 
 .vitality-toggle,
@@ -2240,12 +2303,24 @@ button.chip:active {
 }
 
 @media (max-width: 600px) {
-  .vitality-quotes {
-    padding-bottom: 8vh;
+  .vitality-quote.ambient.slot-bl,
+  .vitality-quote.ambient.slot-tr {
+    max-width: 42vw;
+    font-size: 0.95rem;
   }
-  .vitality-quote {
-    font-size: 0.85rem;
-    max-width: 90%;
+
+  .vitality-quote.ambient.slot-tr {
+    top: 12%;
+    right: 2%;
+  }
+
+  .vitality-quote.focus {
+    display: none;
+  }
+
+  .vitality-quote.reward {
+    bottom: 8vh;
+    font-size: 0.95rem;
   }
   .vitality-toggle {
     display: none;

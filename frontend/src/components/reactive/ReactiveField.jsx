@@ -23,7 +23,7 @@ export default function ReactiveField({
 
   const handleFocus = (e) => {
     onFocus();
-    signalFocus(e.currentTarget.getBoundingClientRect());
+    signalFocus(e.currentTarget.getBoundingClientRect(), theme);
     onFocusProp?.(e);
   };
 
