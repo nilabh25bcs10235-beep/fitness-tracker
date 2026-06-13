@@ -2169,109 +2169,148 @@ button.chip:active {
 .vitality-quote {
   position: absolute;
   margin: 0;
-  font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
-  font-size: clamp(1.05rem, 2.2vw, 1.35rem);
-  font-weight: 500;
-  font-style: italic;
-  letter-spacing: 0.03em;
-  line-height: 1.45;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: clamp(0.8125rem, 1.05vw, 0.9375rem);
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  line-height: 1.55;
+  color: #e8f0f7;
   opacity: 0;
-  transform: translateY(10px);
-  transition: opacity 3.2s ease, transform 3.2s ease, text-shadow 2.5s ease;
-  text-shadow: 0 0 32px rgba(34, 211, 238, 0.04);
+  transform: translateY(8px);
+  transition:
+    opacity 2.8s ease,
+    transform 2.8s ease,
+    text-shadow 2.4s ease;
+  text-shadow:
+    0 0 18px rgba(34, 211, 238, 0.1),
+    0 0 36px rgba(34, 211, 238, 0.05);
   pointer-events: none;
   user-select: none;
+  z-index: 1;
 }
 
-/* Ambient — 5–9% opacity in margin zones, never over main content */
-.vitality-quote.ambient {
-  color: rgba(186, 230, 253, 0.9);
-  max-width: min(280px, 28vw);
+.vitality-quote-backdrop {
+  position: absolute;
+  left: -1.25rem;
+  right: -1.25rem;
+  top: -0.45rem;
+  bottom: -0.45rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(8, 20, 38, 0.22) 18%,
+    rgba(8, 20, 38, 0.28) 50%,
+    rgba(8, 20, 38, 0.22) 82%,
+    transparent 100%
+  );
+  filter: blur(10px);
+  opacity: 0.55;
+  z-index: -1;
 }
 
-.vitality-quote.ambient.slot-bl {
-  left: 2.5%;
-  bottom: 12%;
-  text-align: left;
+/* Layer 2 — contextual quote on section load (triggered, 28% opacity) */
+.vitality-quote.contextual {
+  left: 50%;
+  bottom: 7.5vh;
+  transform: translateX(-50%) translateY(10px);
+  max-width: min(520px, 78vw);
+  text-align: center;
 }
 
-.vitality-quote.ambient.slot-tr {
-  right: 3%;
-  top: 16%;
-  text-align: right;
-  max-width: min(260px, 26vw);
+.vitality-quote.contextual.visible {
+  opacity: 0.28;
+  transform: translateX(-50%) translateY(0);
 }
 
-.vitality-quote.ambient.visible {
-  opacity: 0.11;
-  transform: translateY(0);
+.vitality-quote.contextual.fading {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+  transition-duration: 2.8s;
 }
 
-.vitality-quote.ambient.slot-tr.visible {
-  opacity: 0.09;
-}
-
-/* Focus — gentle glow when typing in a field (up to ~11%) */
+/* Focus — appears when user engages an input */
 .vitality-quote.focus {
-  max-width: min(300px, 32vw);
+  max-width: min(320px, 34vw);
   text-align: left;
-  color: rgba(103, 232, 249, 0.95);
   z-index: 2;
 }
 
 .vitality-quote.focus.visible {
-  opacity: 0.16;
+  opacity: 0.3;
   transform: translateY(0);
-  animation: quote-focus-glow 3s ease-in-out infinite;
+  animation: quote-focus-glow 3.5s ease-in-out infinite;
 }
 
 .vitality-quote.focus.typing.visible {
-  opacity: 0.2;
+  opacity: 0.32;
 }
 
-/* Save / log micro-reward — brief affirming quote */
+/* Save / log reward — brief affirming quote */
 .vitality-quote.reward {
   left: 50%;
-  bottom: 10vh;
+  bottom: 11vh;
   transform: translateX(-50%) translateY(12px);
-  max-width: min(440px, 88vw);
+  max-width: min(440px, 86vw);
   text-align: center;
-  color: rgba(167, 243, 208, 0.95);
-  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 400;
+  z-index: 3;
 }
 
 .vitality-quote.reward.visible {
-  opacity: 0.18;
+  opacity: 0.32;
   transform: translateX(-50%) translateY(0);
   animation: quote-reward-glow 5.5s ease-in-out;
 }
 
 @keyframes quote-focus-glow {
-  0%, 100% { text-shadow: 0 0 20px rgba(34, 211, 238, 0.08); }
-  50% { text-shadow: 0 0 40px rgba(34, 211, 238, 0.18); }
+  0%, 100% {
+    text-shadow:
+      0 0 16px rgba(34, 211, 238, 0.12),
+      0 0 32px rgba(34, 211, 238, 0.06);
+  }
+  50% {
+    text-shadow:
+      0 0 24px rgba(34, 211, 238, 0.2),
+      0 0 48px rgba(34, 211, 238, 0.1);
+  }
 }
 
 @keyframes quote-reward-glow {
   0% { opacity: 0; transform: translateX(-50%) translateY(14px); }
-  12% { opacity: 0.18; transform: translateX(-50%) translateY(0); }
-  75% { opacity: 0.14; }
-  100% { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+  14% { opacity: 0.32; transform: translateX(-50%) translateY(0); }
+  72% { opacity: 0.28; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px); }
 }
 
-.vitality-quotes[data-context="dashboard"] .vitality-quote.ambient {
-  color: rgba(148, 163, 184, 0.95);
+.vitality-quotes[data-context="dashboard"] .vitality-quote.contextual.visible {
+  color: #e8f0f7;
+}
+
+.vitality-quotes[data-context="meals"] .vitality-quote.contextual.visible {
+  color: #e0f7ff;
+}
+
+.vitality-quotes[data-context="workouts"] .vitality-quote.contextual.visible {
+  color: #e8f4ff;
 }
 
 .vitality-quotes[data-context="workouts"] .vitality-quote.focus.visible {
-  color: rgba(251, 191, 36, 0.9);
+  color: #f0f4f8;
 }
 
 .vitality-quotes[data-context="meals"] .vitality-quote.focus.visible {
-  color: rgba(52, 211, 153, 0.9);
+  color: #e8f7f2;
 }
 
-.vitality-quotes[data-context="ai"] .vitality-quote.ambient.visible {
-  opacity: 0.12;
+.vitality-quotes[data-context="recipes"] .vitality-quote.contextual.visible,
+.vitality-quotes[data-context="ai"] .vitality-quote.contextual.visible {
+  color: #e8f0f7;
+}
+
+.vitality-quotes[data-context="meals"] .vitality-quote.reward.visible {
+  color: #e8f7f2;
 }
 
 .vitality-toggle,
@@ -2327,25 +2366,21 @@ button.chip:active {
 }
 
 @media (max-width: 600px) {
-  .vitality-quote.ambient.slot-bl,
-  .vitality-quote.ambient.slot-tr {
-    max-width: 42vw;
-    font-size: 0.95rem;
-  }
-
-  .vitality-quote.ambient.slot-tr {
-    top: 12%;
-    right: 2%;
+  .vitality-quote.contextual {
+    max-width: 88vw;
+    bottom: 6vh;
+    font-size: 0.8125rem;
+    letter-spacing: 0.05em;
   }
 
   .vitality-quote.focus {
-    max-width: 52vw;
-    font-size: 0.9rem;
+    max-width: 56vw;
+    font-size: 0.8125rem;
   }
 
   .vitality-quote.reward {
-    bottom: 8vh;
-    font-size: 0.95rem;
+    bottom: 9vh;
+    font-size: 0.8125rem;
   }
   .vitality-toggle {
     display: none;

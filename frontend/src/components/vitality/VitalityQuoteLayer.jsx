@@ -2,53 +2,42 @@ import { useEffect, useRef, useState } from 'react';
 import { pickQuote } from '../../lib/vitalityQuotes';
 import { useVitality } from '../../context/VitalityContext';
 
-const FADE_MS = 3200;
+const FADE_IN_MS = 2800;
 const HOLD_MS = 5200;
-const CYCLE_MS = FADE_MS + HOLD_MS + FADE_MS;
+const FADE_OUT_MS = 2800;
 
-function useQuoteCycle(quotes, enabled, offset = 0) {
-  const [text, setText] = useState(quotes[0] || '');
-  const [visible, setVisible] = useState(false);
-  const prevRef = useRef(text);
+function useContextualQuote(quotes, context, enabled) {
+  const [text, setText] = useState('');
+  const [phase, setPhase] = useState('hidden');
+  const prevContextRef = useRef(null);
+  const prevQuoteRef = useRef('');
 
   useEffect(() => {
     if (!enabled || quotes.length === 0) {
-      setVisible(false);
+      setPhase('hidden');
       return undefined;
     }
 
-    setText(pickQuote(quotes));
-    prevRef.current = quotes[0];
+    const isRepeat = prevContextRef.current === context;
+    prevContextRef.current = context;
+    if (isRepeat) return undefined;
 
-    let fadeOutTimer;
-    let swapTimer;
-    let fadeInTimer;
-    let cycleTimer;
+    const next = pickQuote(quotes, prevQuoteRef.current);
+    prevQuoteRef.current = next;
+    setText(next);
+    setPhase('entering');
 
-    const runCycle = () => {
-      setVisible(true);
-      fadeOutTimer = setTimeout(() => setVisible(false), FADE_MS + HOLD_MS);
-      swapTimer = setTimeout(() => {
-        const next = pickQuote(quotes, prevRef.current);
-        prevRef.current = next;
-        setText(next);
-      }, FADE_MS + HOLD_MS + FADE_MS - 180);
-      fadeInTimer = setTimeout(() => setVisible(true), FADE_MS + HOLD_MS + FADE_MS);
-    };
-
-    const startTimer = setTimeout(runCycle, offset);
-    cycleTimer = setInterval(runCycle, CYCLE_MS);
+    const holdTimer = setTimeout(() => setPhase('exiting'), FADE_IN_MS + HOLD_MS);
+    const hideTimer = setTimeout(() => setPhase('hidden'), FADE_IN_MS + HOLD_MS + FADE_OUT_MS);
 
     return () => {
-      clearTimeout(startTimer);
-      clearTimeout(fadeOutTimer);
-      clearTimeout(swapTimer);
-      clearTimeout(fadeInTimer);
-      clearInterval(cycleTimer);
+      clearTimeout(holdTimer);
+      clearTimeout(hideTimer);
     };
-  }, [quotes, enabled, offset]);
+  }, [quotes, context, enabled]);
 
-  return { text, visible };
+  const visible = phase === 'entering' || phase === 'exiting';
+  return { text, visible, phase };
 }
 
 export default function VitalityQuoteLayer() {
@@ -63,28 +52,32 @@ export default function VitalityQuoteLayer() {
   } = useVitality();
 
   const enabled = intensity !== 'off';
-  const primary = useQuoteCycle(quotes, enabled, 0);
-  const secondary = useQuoteCycle(quotes, enabled, Math.round(CYCLE_MS * 0.48));
+  const contextual = useContextualQuote(quotes, context, enabled);
 
   if (!enabled) return null;
 
   const showFocus = quoteFocus && focusPoint;
+  const showReward = Boolean(quoteHighlight?.text);
+  const showContextual = contextual.visible && contextual.text && !showFocus && !showReward;
+
   const focusLeft = focusPoint
-    ? `${Math.min(70, Math.max(6, (focusPoint.x / (typeof window !== 'undefined' ? window.innerWidth : 1200)) * 100 - 14))}%`
+    ? `${Math.min(72, Math.max(8, (focusPoint.x / (typeof window !== 'undefined' ? window.innerWidth : 1200)) * 100 - 12))}%`
     : undefined;
   const focusTop = focusPoint
-    ? `${Math.min(65, Math.max(20, (focusPoint.y / (typeof window !== 'undefined' ? window.innerHeight : 800)) * 100 + 8))}%`
+    ? `${Math.min(58, Math.max(22, (focusPoint.y / (typeof window !== 'undefined' ? window.innerHeight : 800)) * 100 + 10))}%`
     : undefined;
 
   return (
     <div className="vitality-quotes" aria-hidden="true" data-context={context}>
-      <p className={`vitality-quote ambient slot-bl ${primary.visible ? 'visible' : ''}`}>
-        {primary.text}
-      </p>
-
-      <p className={`vitality-quote ambient slot-tr ${secondary.visible ? 'visible' : ''}`}>
-        {secondary.text}
-      </p>
+      {showContextual && (
+        <p
+          className={`vitality-quote contextual ${contextual.phase === 'entering' ? 'visible' : 'fading'}`}
+          key={`ctx-${context}-${contextual.text}`}
+        >
+          <span className="vitality-quote-backdrop" aria-hidden="true" />
+          {contextual.text}
+        </p>
+      )}
 
       {showFocus && (
         <p
@@ -95,8 +88,9 @@ export default function VitalityQuoteLayer() {
         </p>
       )}
 
-      {quoteHighlight?.text && (
+      {showReward && (
         <p className="vitality-quote reward visible" key={quoteHighlight.t}>
+          <span className="vitality-quote-backdrop" aria-hidden="true" />
           {quoteHighlight.text}
         </p>
       )}

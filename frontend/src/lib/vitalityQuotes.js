@@ -67,8 +67,8 @@ export const FOCUS_QUOTES = {
 };
 
 export const SUCCESS_QUOTES = {
-  meals: 'Logged with intention — momentum earned.',
-  workouts: 'Effort recorded. Strength compounds quietly.',
+  meals: 'Great choice. Keep building.',
+  workouts: 'Effort logged. Strength compounds quietly.',
   water: 'Hydration is discipline you can feel.',
   recipe: 'Plan saved — future you is already stronger.',
   default: 'Progress noted. Keep building.',

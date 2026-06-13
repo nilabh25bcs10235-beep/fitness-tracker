@@ -105,7 +105,7 @@ function VitalityAmbientCanvas() {
     }
 
     const scale = s.intensityScale ?? 1;
-    const baseAlpha = (s.intensity === 'low' ? 0.14 : s.intensity === 'high' ? 0.28 : 0.22) * scale;
+    const baseAlpha = (s.intensity === 'low' ? 0.1 : s.intensity === 'high' ? 0.18 : 0.14) * scale;
     const calm = s.calmMode ? 0.52 : 1;
     const themeSpeed = (THEME_SPEED[s.context] || 1) * calm;
     const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
@@ -254,7 +254,7 @@ function VitalityReactiveCanvas() {
     if (s.intensity === 'off') return;
 
     const scale = s.intensityScale ?? 1;
-    const baseAlpha = (s.intensity === 'low' ? 0.14 : s.intensity === 'high' ? 0.28 : 0.22) * scale;
+    const baseAlpha = (s.intensity === 'low' ? 0.18 : s.intensity === 'high' ? 0.34 : 0.26) * scale;
     const baseHue = THEME_HUE[s.context] || THEME_HUE.dashboard;
     const warmMix = s.powerMode ? 0.55 : 0;
     const [hr, hg, hb] = lerpHue(baseHue, WARM_HUE, warmMix);

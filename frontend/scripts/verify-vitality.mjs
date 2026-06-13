@@ -75,13 +75,20 @@ async function main() {
     else pass(`Layer 2: quote overlay above app (z-index ${z})`);
   }
 
-  if (quotes.length < 2) fail(`Layer 2: expected ambient quote slots, found ${quotes.length}`);
-  else pass(`Layer 2: ${quotes.length} quote elements present`);
+  await page.waitForTimeout(3200);
+  const contextualQuote = await page.$('.vitality-quote.contextual.visible');
+  if (!contextualQuote) fail('Layer 2: contextual quote did not appear on section load');
+  else {
+    const opacity = await contextualQuote.evaluate((el) => parseFloat(getComputedStyle(el).opacity));
+    if (opacity < 0.2) fail(`Layer 2: contextual quote opacity too low (${opacity})`);
+    else pass(`Layer 2: contextual quote visible on load (opacity ${opacity.toFixed(2)})`);
+  }
 
-  await page.waitForTimeout(4000);
-  const visibleQuotes = await page.$$('.vitality-quote.ambient.visible');
-  if (visibleQuotes.length < 1) fail('Layer 2: no ambient quote became visible in cycle');
-  else pass(`Layer 2: ${visibleQuotes.length} ambient quote(s) visible`);
+  await page.click('button.tab-meals');
+  await page.waitForTimeout(3200);
+  const mealsQuote = await page.$('.vitality-quote.contextual.visible');
+  if (!mealsQuote) fail('Layer 2: contextual quote did not appear on tab switch');
+  else pass('Layer 2: contextual quote appears on section change');
 
   await page.click('button.tab-workouts');
   await page.waitForTimeout(800);
