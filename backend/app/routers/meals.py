@@ -11,7 +11,8 @@ from ..deps import get_user_profile
 from ..models import User, Meal
 from ..schemas import MealCreate, MealResponse, MealAnalysis
 from ..data.food_catalog import search_foods
-from ..llm.groq_client import estimate_meal_from_text, analyze_meal_image, AIError
+from ..llm.groq_client import estimate_meal_from_text, AIError
+from ..llm.collaborative_analysis import analyze_meal_image_collaborative
 from ..services.health_scorer import score_meal_health
 from ..services.ai_cache import get_cached, set_cached
 
@@ -34,10 +35,14 @@ def _to_meal_analysis(result: dict) -> MealAnalysis:
         carbs_g=float(result.get("carbs_g", 0)),
         fat_g=float(result.get("fat_g", 0)),
         fiber_g=float(result.get("fiber_g", 0)),
-        confidence=result.get("confidence", "medium"),
+        confidence=result.get("confidence"),
         notes=result.get("notes", ""),
         micronutrients={k: float(v) for k, v in micros.items() if v is not None},
         micro_description=result.get("micro_description", ""),
+        review_passes=result.get("review_passes"),
+        analysis_method=result.get("analysis_method"),
+        vision_summary=result.get("vision_summary"),
+        text_summary=result.get("text_summary"),
     )
 
 
@@ -79,7 +84,7 @@ async def analyze_image(
 ):
     image_bytes = await file.read()
     try:
-        result = analyze_meal_image(image_bytes, user.dietary_restrictions)
+        result = analyze_meal_image_collaborative(image_bytes, user.dietary_restrictions)
         return _to_meal_analysis(result)
     except AIError as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -124,7 +129,7 @@ async def log_meal_with_image(
 ):
     image_bytes = await file.read()
     try:
-        analysis = analyze_meal_image(image_bytes, user.dietary_restrictions)
+        analysis = analyze_meal_image_collaborative(image_bytes, user.dietary_restrictions)
     except AIError as e:
         raise HTTPException(status_code=503, detail=str(e))
 

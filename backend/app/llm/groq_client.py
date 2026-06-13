@@ -287,7 +287,6 @@ Return ONLY valid JSON:
   "carbs_g": number,
   "fat_g": number,
   "fiber_g": number,
-  "confidence": "high|medium|low",
   "notes": "brief note",
   "micronutrients": {
     "iron_mg": number,
@@ -361,8 +360,7 @@ This is an AI estimate only — not medical advice. Return ONLY valid JSON:
   "muscle_mass_kg": number,
   "physique_notes": "what you observe about build/posture",
   "nutritional_advice": "2-3 sentences tailored to their goal",
-  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"],
-  "confidence": "high|medium|low"
+  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"]
 }"""
     user_text = f"Analyze this full-body image. User profile: {json.dumps(user_context)}"
     return _ai_result(_vision_json(system, user_text, image_bytes, max_tokens=1200))

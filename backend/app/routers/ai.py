@@ -25,11 +25,11 @@ from ..data.exercise_templates import get_template
 from ..llm.groq_client import (
     get_smart_insight,
     coach_reply,
-    analyze_body_image,
     get_exercise_plan,
     estimate_calorie_burn,
     AIError,
 )
+from ..llm.collaborative_analysis import analyze_body_image_collaborative
 from ..services.ai_cache import get_cached, set_cached
 from ..services.nutrition_math import estimate_calorie_burn_local
 from ..services.youtube_search import enrich_items_with_videos
@@ -140,7 +140,7 @@ async def analyze_body(
 ):
     image_bytes = await file.read()
     try:
-        result = analyze_body_image(image_bytes, _user_context(user))
+        result = analyze_body_image_collaborative(image_bytes, _user_context(user))
     except AIError as e:
         raise HTTPException(status_code=503, detail=str(e))
 
@@ -151,7 +151,8 @@ async def analyze_body(
         physique_notes=result.get("physique_notes", ""),
         nutritional_advice=result.get("nutritional_advice", ""),
         goal_recommendations=result.get("goal_recommendations", []),
-        confidence=result.get("confidence", "medium"),
+        review_passes=result.get("review_passes", 10),
+        analysis_method=result.get("analysis_method", ""),
     )
 
 

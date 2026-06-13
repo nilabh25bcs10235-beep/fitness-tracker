@@ -60,10 +60,14 @@ class MealAnalysis(BaseModel):
     carbs_g: float
     fat_g: float
     fiber_g: float
-    confidence: str
+    confidence: Optional[str] = None
     notes: str
     micronutrients: Dict[str, float] = {}
     micro_description: str = ""
+    review_passes: Optional[int] = None
+    analysis_method: Optional[str] = None
+    vision_summary: Optional[str] = None
+    text_summary: Optional[str] = None
 
 
 class MealResponse(BaseModel):
@@ -298,7 +302,8 @@ class BodyImageAnalysis(BaseModel):
     physique_notes: str
     nutritional_advice: str
     goal_recommendations: List[str]
-    confidence: str
+    review_passes: Optional[int] = None
+    analysis_method: Optional[str] = None
 
 
 class ExerciseItem(BaseModel):

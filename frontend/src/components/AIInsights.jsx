@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { analyzeBodyImageVision } from '../lib/visionAnalysis';
 import ReactiveField from './reactive/ReactiveField';
+import ImageAnalysisProgress from './ImageAnalysisProgress';
+import BodyScanResults from './BodyScanResults';
 
 const QUICK_PROMPTS = [
   'What should I eat for dinner to hit my protein goal?',
@@ -43,8 +45,12 @@ export default function AIInsights({ user }) {
   const [showManage, setShowManage] = useState(false);
   const [bodyResult, setBodyResult] = useState(null);
   const [bodyLoading, setBodyLoading] = useState(false);
+  const [bodyPreview, setBodyPreview] = useState(null);
+  const [bodyProgress, setBodyProgress] = useState({ stageIndex: 0, stageLabel: '', progress: 0 });
+  const [bodyDragOver, setBodyDragOver] = useState(false);
   const [error, setError] = useState('');
   const chatEndRef = useRef(null);
+  const bodyFileRef = useRef(null);
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -174,18 +180,40 @@ export default function AIInsights({ user }) {
     }
   };
 
-  const handleBodyUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processBodyFile = async (file) => {
+    if (!file?.type?.startsWith('image/')) return;
+
+    if (bodyPreview) URL.revokeObjectURL(bodyPreview);
+    setBodyPreview(URL.createObjectURL(file));
     setBodyLoading(true);
+    setBodyResult(null);
+    setBodyProgress({ stageIndex: 0, stageLabel: 'Vision scan', progress: 0 });
+    setError('');
+
     try {
-      const res = await analyzeBodyImageVision(file, buildUserContext(user));
+      const res = await analyzeBodyImageVision(file, buildUserContext(user), {
+        onProgress: setBodyProgress,
+      });
       setBodyResult(res);
     } catch (err) {
-      setBodyResult({ nutritional_advice: err.message, goal_recommendations: [] });
+      setError(err.message);
+      setBodyPreview(null);
     } finally {
       setBodyLoading(false);
     }
+  };
+
+  const handleBodyUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processBodyFile(file);
+    e.target.value = '';
+  };
+
+  const handleBodyDrop = (e) => {
+    e.preventDefault();
+    setBodyDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processBodyFile(file);
   };
 
   const handleKeyDown = (e) => {
@@ -335,48 +363,54 @@ export default function AIInsights({ user }) {
         {error && <p className="error">{error}</p>}
       </div>
 
-      <div className="card card-lively">
-        <h3>Body Scan — BMI & Nutrition Advice</h3>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-          Upload a full-body photo. AI estimates BMI, body composition, and gives goal-specific nutrition advice.
-        </p>
-        <label className="upload-zone">
-          <input type="file" accept="image/*" onChange={handleBodyUpload} disabled={bodyLoading} />
-          <div style={{ fontSize: '2rem' }}>🧍</div>
-          <p>{bodyLoading ? 'Analyzing...' : 'Upload full-body image'}</p>
-          <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>AI estimate only — not a medical measurement</p>
-        </label>
-
-        {bodyResult && (
-          <div className="insight-box" style={{ marginTop: '1rem' }}>
-            <div className="grid-4" style={{ marginBottom: '1rem' }}>
-              <div className="stat-card">
-                <div className="value">{bodyResult.estimated_bmi ?? '—'}</div>
-                <div className="label">Est. BMI</div>
-              </div>
-              <div className="stat-card">
-                <div className="value">{bodyResult.body_fat_pct ?? '—'}%</div>
-                <div className="label">Body Fat</div>
-              </div>
-              <div className="stat-card">
-                <div className="value">{bodyResult.muscle_mass_kg ?? '—'} kg</div>
-                <div className="label">Muscle Mass</div>
-              </div>
-              <div className="stat-card">
-                <div className="value">{bodyResult.confidence}</div>
-                <div className="label">Confidence</div>
-              </div>
-            </div>
-            {bodyResult.physique_notes && (
-              <p style={{ color: 'var(--muted)' }}>{bodyResult.physique_notes}</p>
-            )}
-            <p><strong>Nutrition advice:</strong> {bodyResult.nutritional_advice}</p>
-            {bodyResult.goal_recommendations?.length > 0 && (
-              <ul>
-                {bodyResult.goal_recommendations.map((r, i) => <li key={i}>{r}</li>)}
-              </ul>
-            )}
+      <div className="card card-lively body-scan-card">
+        <div className="body-scan-header">
+          <div>
+            <h3>Body Scan</h3>
+            <p className="body-scan-sub">
+              Upload a full-body photo. Groq vision and text models cross-check your profile
+              through 10 review passes before finalizing BMI and nutrition advice.
+            </p>
           </div>
+          <span className="scan-badge">Vision + Text AI</span>
+        </div>
+
+        <div
+          className={`scan-upload-zone body-scan-upload ${bodyDragOver ? 'drag-over' : ''} ${bodyPreview ? 'has-preview' : ''}`}
+          onDragOver={(e) => { e.preventDefault(); setBodyDragOver(true); }}
+          onDragLeave={() => setBodyDragOver(false)}
+          onDrop={handleBodyDrop}
+          onClick={() => bodyFileRef.current?.click()}
+          onKeyDown={(e) => e.key === 'Enter' && bodyFileRef.current?.click()}
+          role="button"
+          tabIndex={0}
+        >
+          <input
+            ref={bodyFileRef}
+            type="file"
+            accept="image/*"
+            onChange={handleBodyUpload}
+            disabled={bodyLoading}
+          />
+          {bodyPreview ? (
+            <img src={bodyPreview} alt="Body scan preview" className="scan-upload-preview" />
+          ) : (
+            <>
+              <div className="scan-upload-icon">🧍</div>
+              <p className="scan-upload-title">Drop full-body photo here</p>
+              <p className="scan-upload-hint">Stand straight, good lighting · click or drag to upload</p>
+            </>
+          )}
+        </div>
+
+        <ImageAnalysisProgress
+          active={bodyLoading}
+          stageIndex={bodyProgress.stageIndex}
+          stageLabel={bodyProgress.stageLabel}
+        />
+
+        {!bodyLoading && bodyResult && (
+          <BodyScanResults result={bodyResult} previewUrl={bodyPreview} />
         )}
       </div>
     </div>

@@ -1,87 +1,108 @@
 import { api } from '../api';
 import { isPuterAvailable, puterVisionJson } from './puterVision';
 
+const REVIEW_PASSES = 10;
+const TOTAL_STAGES = 12;
+
 const MEAL_VISION_SYSTEM = `You are a strict nutrition vision expert for Indian and global meals.
 Identify food items in the image and estimate nutrition realistically.
+Do NOT output confidence scores.
 
-Be conservative for burgers, waffles, fried foods, fast food, desserts, and oily restaurant meals.
-These are typically calorie-dense with high sugar, saturated fat, and sodium and poor protein density.
-Do NOT underestimate sugar_g or saturated_fat_g. High calories with low protein is rarely "good".
-
-Return ONLY valid JSON:
-{
-  "name": "meal name",
-  "description": "what you see",
-  "calories": number,
-  "protein_g": number,
-  "carbs_g": number,
-  "fat_g": number,
-  "fiber_g": number,
-  "confidence": "high|medium|low",
-  "notes": "brief note",
-  "micronutrients": {
-    "iron_mg": number,
-    "calcium_mg": number,
-    "vitamin_c_mg": number,
-    "sodium_mg": number,
-    "potassium_mg": number,
-    "zinc_mg": number,
-    "vitamin_a_mcg": number,
-    "vitamin_d_mcg": number,
-    "sugar_g": number,
-    "saturated_fat_g": number
-  },
-  "micro_description": "2-3 sentence micronutrient summary"
-}`;
+Return ONLY valid JSON with name, description, calories, protein_g, carbs_g, fat_g, fiber_g,
+notes, micronutrients object, and micro_description.`;
 
 const BODY_VISION_SYSTEM = `You are a fitness assessor analyzing a full-body photo.
-Estimate BMI range, body composition, and give nutritional goal advice.
-This is an AI estimate only — not medical advice. Return ONLY valid JSON:
-{
-  "estimated_bmi": number,
-  "body_fat_pct": number,
-  "muscle_mass_kg": number,
-  "physique_notes": "what you observe about build/posture",
-  "nutritional_advice": "2-3 sentences tailored to their goal",
-  "goal_recommendations": ["actionable tip 1", "tip 2", "tip 3"],
-  "confidence": "high|medium|low"
-}`;
+Estimate BMI, body composition, and nutritional goal advice.
+Do NOT output confidence scores.
+
+Return ONLY valid JSON with estimated_bmi, body_fat_pct, muscle_mass_kg, physique_notes,
+nutritional_advice, and goal_recommendations array.`;
+
+const STAGE_LABELS = [
+  'Vision scan',
+  'Text cross-check',
+  ...Array.from({ length: REVIEW_PASSES }, (_, i) => `Review pass ${i + 1}/${REVIEW_PASSES}`),
+  'Finalizing',
+];
+
+function runSimulatedProgress(onProgress, signal) {
+  let stageIndex = 0;
+  onProgress?.({ stageIndex, stageLabel: STAGE_LABELS[0], progress: 0 });
+
+  const interval = setInterval(() => {
+    if (signal?.aborted) {
+      clearInterval(interval);
+      return;
+    }
+    stageIndex = Math.min(stageIndex + 1, TOTAL_STAGES - 1);
+    const progress = Math.round(((stageIndex + 1) / TOTAL_STAGES) * 100);
+    onProgress?.({
+      stageIndex,
+      stageLabel: STAGE_LABELS[stageIndex] || 'Finalizing',
+      progress,
+    });
+    if (stageIndex >= TOTAL_STAGES - 1) {
+      clearInterval(interval);
+    }
+  }, 2800);
+
+  return () => clearInterval(interval);
+}
 
 async function analyzeWithServerThenPuter({
   file,
   systemPrompt,
   userPrompt,
   serverAnalyze,
+  onProgress,
+  signal,
 }) {
+  const stopProgress = onProgress ? runSimulatedProgress(onProgress, signal) : null;
+
   try {
-    return await serverAnalyze();
+    const result = await serverAnalyze();
+    onProgress?.({
+      stageIndex: TOTAL_STAGES - 1,
+      stageLabel: 'Finalized',
+      progress: 100,
+    });
+    return result;
   } catch (err) {
     console.warn('Server vision unavailable, trying Puter fallback:', err);
+  } finally {
+    stopProgress?.();
   }
 
   if (isPuterAvailable()) {
-    return puterVisionJson({ systemPrompt, userPrompt, file });
+    onProgress?.({ stageIndex: 0, stageLabel: 'Puter vision fallback', progress: 10 });
+    const result = await puterVisionJson({ systemPrompt, userPrompt, file });
+    onProgress?.({ stageIndex: TOTAL_STAGES - 1, stageLabel: 'Finalized', progress: 100 });
+    return result;
   }
 
   throw new Error('Vision analysis unavailable. Check server API keys or network.');
 }
 
-export function analyzeMealImageVision(file, dietaryRestrictions = '') {
+export function analyzeMealImageVision(file, dietaryRestrictions = '', options = {}) {
   const userPrompt = `Analyze this meal photo. Dietary restrictions: ${dietaryRestrictions || 'none'}`;
   return analyzeWithServerThenPuter({
     file,
     systemPrompt: MEAL_VISION_SYSTEM,
     userPrompt,
     serverAnalyze: () => api.analyzeMealImage(file),
+    onProgress: options.onProgress,
+    signal: options.signal,
   });
 }
 
-export function analyzeBodyImageVision(file, userContext = {}) {
+export function analyzeBodyImageVision(file, userContext = {}, options = {}) {
   const userPrompt = `Analyze this full-body image. User profile: ${JSON.stringify(userContext)}`;
   return analyzeWithServerThenPuter({
     file,
     systemPrompt: BODY_VISION_SYSTEM,
     userPrompt,
     serverAnalyze: () => api.analyzeBodyImage(file),
+    onProgress: options.onProgress,
+    signal: options.signal,
   });
 }

@@ -4,6 +4,8 @@ import { analyzeMealImageVision } from '../lib/visionAnalysis';
 import { HEALTH_LABELS, healthScoreClass } from '../lib/healthScore';
 import ReactiveField from './reactive/ReactiveField';
 import CelebrateBurst from './reactive/CelebrateBurst';
+import ImageAnalysisProgress from './ImageAnalysisProgress';
+import MealScanResults from './MealScanResults';
 import { useVitality } from '../context/VitalityContext';
 
 const MEAL_TYPES = ['breakfast', 'lunch', 'dinner', 'snack'];
@@ -21,21 +23,20 @@ const MICRO_LABELS = {
   saturated_fat_g: 'Saturated fat',
 };
 
-function MacroAnalysis({ analysis }) {
+function TextMacroAnalysis({ analysis }) {
   if (!analysis) return null;
   const micros = analysis.micronutrients || {};
 
   return (
-    <div className="insight-box" style={{ marginTop: '1rem' }}>
+    <div className="insight-box text-macro-box">
       <strong>{analysis.name}</strong>
-      <p style={{ margin: '0.5rem 0', color: 'var(--muted)' }}>{analysis.notes}</p>
+      <p className="scan-desc">{analysis.notes}</p>
       <div className="chip-row">
         <span className="chip">{Math.round(analysis.calories)} kcal</span>
         <span className="chip">{Math.round(analysis.protein_g)}g protein</span>
         <span className="chip">{Math.round(analysis.carbs_g)}g carbs</span>
         <span className="chip">{Math.round(analysis.fat_g)}g fat</span>
         <span className="chip">{Math.round(analysis.fiber_g)}g fibre</span>
-        <span className="badge">{analysis.confidence} confidence</span>
       </div>
       {(analysis.micro_description || Object.keys(micros).length > 0) && (
         <details className="micro-details">
@@ -59,6 +60,7 @@ function MacroAnalysis({ analysis }) {
 }
 
 export default function MealLogger({ meals, onRefresh, user }) {
+  const [mode, setMode] = useState('type');
   const [description, setDescription] = useState('');
   const [mealType, setMealType] = useState('lunch');
   const [analysis, setAnalysis] = useState(null);
@@ -66,14 +68,19 @@ export default function MealLogger({ meals, onRefresh, user }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState({ stageIndex: 0, stageLabel: '', progress: 0 });
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [error, setError] = useState('');
   const [lastHealthScore, setLastHealthScore] = useState(null);
   const [celebrate, setCelebrate] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const suggestRef = useRef(null);
   const analyzeRef = useRef(null);
   const analyzeAbortRef = useRef(null);
   const lastAnalyzedRef = useRef('');
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const { signalSuccessFromElement } = useVitality();
 
   const runAnalysis = async (text) => {
@@ -115,8 +122,10 @@ export default function MealLogger({ meals, onRefresh, user }) {
 
     if (description.trim().length < 2) {
       setSuggestions([]);
-      setAnalysis(null);
-      lastAnalyzedRef.current = '';
+      if (mode === 'type') {
+        setAnalysis(null);
+        lastAnalyzedRef.current = '';
+      }
       return;
     }
 
@@ -130,7 +139,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
       }
     }, 350);
 
-    if (description.trim().length >= 4) {
+    if (mode === 'type' && description.trim().length >= 4) {
       analyzeRef.current = setTimeout(() => {
         runAnalysis(description);
       }, 1400);
@@ -140,7 +149,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
       if (suggestRef.current) clearTimeout(suggestRef.current);
       if (analyzeRef.current) clearTimeout(analyzeRef.current);
     };
-  }, [description]);
+  }, [description, mode]);
 
   const selectSuggestion = (name) => {
     setDescription(name);
@@ -165,6 +174,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
             micronutrients: analysis.micronutrients,
             micro_description: analysis.micro_description,
             notes: analysis.notes,
+            review_passes: analysis.review_passes,
           })
         : null;
 
@@ -184,6 +194,7 @@ export default function MealLogger({ meals, onRefresh, user }) {
       signalSuccessFromElement('meals', triggerEl);
       setDescription('');
       setAnalysis(null);
+      setPreviewUrl(null);
       setSuggestions([]);
       onRefresh();
     } catch (e) {
@@ -193,29 +204,73 @@ export default function MealLogger({ meals, onRefresh, user }) {
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const processImageFile = async (file) => {
+    if (!file?.type?.startsWith('image/')) return;
+
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(URL.createObjectURL(file));
+    setMode('photo');
+    setScanning(true);
     setLoading(true);
     setError('');
+    setAnalysis(null);
+    setScanProgress({ stageIndex: 0, stageLabel: 'Vision scan', progress: 0 });
+
     try {
-      const result = await analyzeMealImageVision(file, user?.dietary_restrictions);
+      const result = await analyzeMealImageVision(file, user?.dietary_restrictions, {
+        onProgress: setScanProgress,
+      });
       setAnalysis(result);
       setDescription(result.description || result.name);
     } catch (err) {
       setError(err.message);
+      setPreviewUrl(null);
     } finally {
+      setScanning(false);
       setLoading(false);
     }
   };
 
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processImageFile(file);
+    e.target.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processImageFile(file);
+  };
+
   return (
-    <div>
-      <div className="card card-lively">
-        <h2>Log a Meal</h2>
-        <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-          Type or upload a meal — AI auto-detects calories, macros, and micronutrients.
-        </p>
+    <div className="meal-logger">
+      <div className="card card-lively meal-logger-card">
+        <div className="meal-logger-header">
+          <div>
+            <h2>Log a Meal</h2>
+            <p className="meal-logger-sub">
+              Type a description or scan a photo — AI cross-checks vision and text in 10 review passes.
+            </p>
+          </div>
+          <div className="meal-mode-tabs">
+            <button
+              type="button"
+              className={`meal-mode-tab ${mode === 'type' ? 'active' : ''}`}
+              onClick={() => setMode('type')}
+            >
+              Type
+            </button>
+            <button
+              type="button"
+              className={`meal-mode-tab ${mode === 'photo' ? 'active' : ''}`}
+              onClick={() => setMode('photo')}
+            >
+              Photo scan
+            </button>
+          </div>
+        </div>
 
         <div className="form-group">
           <label>Meal Type</label>
@@ -226,55 +281,87 @@ export default function MealLogger({ meals, onRefresh, user }) {
           </select>
         </div>
 
-        <ReactiveField
-          theme="food"
-          label="What did you eat?"
-          wrapClassName="food-input-wrap"
-          inputRef={inputRef}
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-          onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          placeholder="e.g. tandoori chicken"
-          autoComplete="off"
-        >
-          {showSuggestions && suggestions.length > 0 && (
-            <ul className="food-suggestions">
-              {suggestions.map((s) => (
-                <li key={s}>
-                  <button type="button" onMouseDown={() => selectSuggestion(s)}>
-                    {s}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </ReactiveField>
+        {mode === 'type' ? (
+          <>
+            <ReactiveField
+              theme="food"
+              label="What did you eat?"
+              wrapClassName="food-input-wrap"
+              inputRef={inputRef}
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="e.g. tandoori chicken with naan"
+              autoComplete="off"
+            >
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="food-suggestions">
+                  {suggestions.map((s) => (
+                    <li key={s}>
+                      <button type="button" onMouseDown={() => selectSuggestion(s)}>
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ReactiveField>
 
-        {analyzing && <p className="analyzing-hint">Analyzing nutrition...</p>}
+            {analyzing && <p className="analyzing-hint">Analyzing nutrition...</p>}
+            <TextMacroAnalysis analysis={analysis} />
+          </>
+        ) : (
+          <div className="meal-photo-scan">
+            <div
+              className={`scan-upload-zone ${dragOver ? 'drag-over' : ''} ${previewUrl ? 'has-preview' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={scanning}
+              />
+              {previewUrl ? (
+                <img src={previewUrl} alt="Meal preview" className="scan-upload-preview" />
+              ) : (
+                <>
+                  <div className="scan-upload-icon">📷</div>
+                  <p className="scan-upload-title">Drop meal photo here</p>
+                  <p className="scan-upload-hint">or click to browse · JPG, PNG, WEBP</p>
+                </>
+              )}
+            </div>
 
-        <MacroAnalysis analysis={analysis} />
+            <ImageAnalysisProgress
+              active={scanning}
+              stageIndex={scanProgress.stageIndex}
+              stageLabel={scanProgress.stageLabel}
+            />
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+            {!scanning && analysis?.review_passes && (
+              <MealScanResults analysis={analysis} previewUrl={previewUrl} />
+            )}
+          </div>
+        )}
+
+        <div className="meal-logger-actions">
           <button
             className="btn btn-primary"
             onClick={(e) => handleLogMeal(e.currentTarget)}
-            disabled={loading || !description.trim()}
+            disabled={loading || scanning || !description.trim()}
           >
             {loading ? 'Saving...' : 'Log Meal'}
           </button>
-        </div>
-
-        <div style={{ marginTop: '1.5rem' }}>
-          <label className="upload-zone">
-            <input type="file" accept="image/*" onChange={handleImageUpload} disabled={loading} />
-            <div style={{ fontSize: '2rem' }}>📷</div>
-            <p>Upload meal photo for AI vision analysis</p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
-              AI vision estimates calories, macros & micronutrients
-            </p>
-          </label>
         </div>
 
         <CelebrateBurst
