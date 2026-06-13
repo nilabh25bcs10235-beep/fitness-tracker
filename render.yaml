@@ -4,7 +4,7 @@ services:
     runtime: python
     plan: free
     rootDir: backend
-    buildCommand: pip install -r requirements.txt && cd ../frontend && npm install && npm run build && rm -rf ../backend/static && cp -r dist ../backend/static
+    buildCommand: pip install -r requirements.txt && cd ../frontend && npm install && npm run build && rm -rf ../backend/static && mkdir -p ../backend/static && cp -r dist/. ../backend/static/ && test -n "$(ls -A ../backend/static/assets/*.js 2>/dev/null)" && echo "Static assets OK"
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:

@@ -127,8 +127,14 @@ Return ONLY valid JSON:
 
 
 def estimate_meal_from_text(description: str, dietary_restrictions: str = "") -> Dict:
-    system = """You are a nutrition expert specializing in Indian and global cuisine.
+    system = """You are a strict, realistic nutrition expert specializing in Indian and global cuisine.
 Estimate calories, macros, and key micronutrients for the described food/meal.
+
+Be conservative for indulgent or processed foods (burgers, waffles, fried chicken, pizza, fast food, desserts).
+These are typically calorie-dense with high sugar, saturated fat, and sodium and LOW protein density.
+Do NOT underestimate sugar_g or saturated_fat_g for such meals.
+High calories with relatively low protein is NOT a healthy meal unless it is clearly a lean, balanced homemade dish.
+
 Return ONLY valid JSON:
 {
   "name": "short meal name",
@@ -170,8 +176,14 @@ def analyze_meal_image(image_bytes: bytes, dietary_restrictions: str = "") -> Di
             messages=[
                 {
                     "role": "system",
-                    "content": """You are a nutrition vision expert for Indian and global meals.
-Identify food items in the image and estimate nutrition. Return ONLY valid JSON:
+                    "content": """You are a strict nutrition vision expert for Indian and global meals.
+Identify food items in the image and estimate nutrition realistically.
+
+Be conservative for burgers, waffles, fried foods, fast food, desserts, and oily restaurant meals.
+These are typically calorie-dense with high sugar, saturated fat, and sodium and poor protein density.
+Do NOT underestimate sugar_g or saturated_fat_g. High calories with low protein is rarely "good".
+
+Return ONLY valid JSON:
 {
   "name": "meal name",
   "description": "what you see",

@@ -1,16 +1,18 @@
 import { useState, useCallback } from 'react';
 
 const FLOATERS = [
-  { emoji: '🏋️', size: 2.2, x: 8, y: 15, dur: 18 },
-  { emoji: '🚀', size: 2.5, x: 85, y: 20, dur: 22 },
-  { emoji: '🍎', size: 2, x: 20, y: 70, dur: 16 },
-  { emoji: '🍌', size: 1.8, x: 70, y: 65, dur: 20 },
-  { emoji: '🍗', size: 2.1, x: 45, y: 10, dur: 24 },
-  { emoji: '🥕', size: 1.7, x: 55, y: 80, dur: 19 },
-  { emoji: '🍊', size: 1.9, x: 90, y: 50, dur: 21 },
-  { emoji: '🥦', size: 1.6, x: 12, y: 45, dur: 17 },
-  { emoji: '🍇', size: 1.8, x: 35, y: 35, dur: 23 },
-  { emoji: '🥚', size: 1.5, x: 62, y: 40, dur: 15 },
+  { emoji: '🏋️', size: 2.2, path: 'wander-a', dur: 34, delay: 0 },
+  { emoji: '🚀', size: 2.5, path: 'wander-b', dur: 38, delay: 2 },
+  { emoji: '🍎', size: 2, path: 'wander-c', dur: 32, delay: 4 },
+  { emoji: '🍌', size: 1.8, path: 'wander-d', dur: 36, delay: 1 },
+  { emoji: '🍗', size: 2.1, path: 'wander-e', dur: 40, delay: 6 },
+  { emoji: '🥕', size: 1.7, path: 'wander-f', dur: 33, delay: 3 },
+  { emoji: '🍊', size: 1.9, path: 'wander-g', dur: 37, delay: 5 },
+  { emoji: '🥦', size: 1.6, path: 'wander-h', dur: 31, delay: 7 },
+  { emoji: '🍇', size: 1.8, path: 'wander-i', dur: 39, delay: 2.5 },
+  { emoji: '🥚', size: 1.5, path: 'wander-j', dur: 30, delay: 8 },
+  { emoji: '🥑', size: 1.7, path: 'wander-k', dur: 35, delay: 1.5 },
+  { emoji: '🍕', size: 2, path: 'wander-l', dur: 42, delay: 9 },
 ];
 
 function Burst({ x, y, emoji, onDone }) {
@@ -69,18 +71,17 @@ export default function FloatingFoodBackground() {
         />
       ))}
       {FLOATERS.map((f) => (
-        !hidden.has(f.emoji + f.x) && (
+        !hidden.has(f.emoji + f.path) && (
           <button
-            key={`${f.emoji}-${f.x}`}
+            key={`${f.emoji}-${f.path}`}
             type="button"
-            className="floater"
+            className={`floater floater-roam ${f.path}`}
             style={{
-              '--x': `${f.x}%`,
-              '--y': `${f.y}%`,
               '--size': `${f.size}rem`,
               '--dur': `${f.dur}s`,
+              '--delay': `${f.delay}s`,
             }}
-            onClick={(e) => pop(f.emoji + f.x, f.emoji, e)}
+            onClick={(e) => pop(f.emoji + f.path, f.emoji, e)}
             tabIndex={-1}
             aria-hidden="true"
           >

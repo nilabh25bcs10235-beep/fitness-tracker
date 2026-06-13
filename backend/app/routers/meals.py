@@ -82,6 +82,8 @@ def _attach_health_score(meal: Meal, user: User) -> None:
         daily_protein_target=user.daily_protein_target,
         goal=user.goal,
         ai_analysis=meal.ai_analysis,
+        name=meal.name or "",
+        description=meal.description or "",
     )
 
 

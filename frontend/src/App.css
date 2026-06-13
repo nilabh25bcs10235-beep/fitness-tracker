@@ -34,8 +34,12 @@ body {
 .app-root {
   position: relative;
   min-height: 100vh;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.8s ease 0.2s;
+}
+
+.app-root.app-entering {
+  opacity: 0;
 }
 
 .app-root.app-visible {
@@ -107,11 +111,9 @@ body {
   50% { opacity: 0.9; transform: scale(1.4); }
 }
 
-/* Floating food emoji */
+/* Floating food emoji — roam full screen */
 .floater {
   position: absolute;
-  left: var(--x);
-  top: var(--y);
   font-size: var(--size);
   background: none;
   border: none;
@@ -119,17 +121,114 @@ body {
   cursor: pointer;
   z-index: 1;
   filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
-  animation: floater-drift var(--dur) ease-in-out infinite alternate;
   transition: transform 0.15s ease;
+  will-change: left, top, transform;
+}
+
+.floater-roam {
+  animation: var(--dur) ease-in-out var(--delay) infinite;
 }
 
 .floater:hover {
-  transform: scale(1.2) rotate(-8deg);
+  transform: scale(1.25) rotate(-10deg);
+  z-index: 2;
 }
 
-@keyframes floater-drift {
-  from { transform: translate(0, 0) rotate(-6deg); }
-  to { transform: translate(18px, -22px) rotate(8deg); }
+.wander-a { animation-name: wander-a; }
+.wander-b { animation-name: wander-b; }
+.wander-c { animation-name: wander-c; }
+.wander-d { animation-name: wander-d; }
+.wander-e { animation-name: wander-e; }
+.wander-f { animation-name: wander-f; }
+.wander-g { animation-name: wander-g; }
+.wander-h { animation-name: wander-h; }
+.wander-i { animation-name: wander-i; }
+.wander-j { animation-name: wander-j; }
+.wander-k { animation-name: wander-k; }
+.wander-l { animation-name: wander-l; }
+
+@keyframes wander-a {
+  0%, 100% { left: 4%; top: 8%; transform: rotate(-8deg); }
+  25% { left: 78%; top: 18%; transform: rotate(6deg); }
+  50% { left: 62%; top: 72%; transform: rotate(-4deg); }
+  75% { left: 12%; top: 58%; transform: rotate(10deg); }
+}
+
+@keyframes wander-b {
+  0%, 100% { left: 88%; top: 12%; transform: rotate(5deg); }
+  25% { left: 55%; top: 6%; transform: rotate(-6deg); }
+  50% { left: 8%; top: 42%; transform: rotate(8deg); }
+  75% { left: 72%; top: 82%; transform: rotate(-10deg); }
+}
+
+@keyframes wander-c {
+  0%, 100% { left: 18%; top: 78%; transform: rotate(4deg); }
+  25% { left: 84%; top: 55%; transform: rotate(-7deg); }
+  50% { left: 40%; top: 14%; transform: rotate(9deg); }
+  75% { left: 6%; top: 32%; transform: rotate(-5deg); }
+}
+
+@keyframes wander-d {
+  0%, 100% { left: 68%; top: 68%; transform: rotate(-6deg); }
+  25% { left: 22%; top: 22%; transform: rotate(7deg); }
+  50% { left: 90%; top: 38%; transform: rotate(-9deg); }
+  75% { left: 48%; top: 86%; transform: rotate(5deg); }
+}
+
+@keyframes wander-e {
+  0%, 100% { left: 42%; top: 4%; transform: rotate(8deg); }
+  25% { left: 10%; top: 52%; transform: rotate(-4deg); }
+  50% { left: 76%; top: 64%; transform: rotate(6deg); }
+  75% { left: 58%; top: 28%; transform: rotate(-11deg); }
+}
+
+@keyframes wander-f {
+  0%, 100% { left: 52%; top: 88%; transform: rotate(-5deg); }
+  25% { left: 92%; top: 72%; transform: rotate(8deg); }
+  50% { left: 28%; top: 12%; transform: rotate(-7deg); }
+  75% { left: 14%; top: 68%; transform: rotate(4deg); }
+}
+
+@keyframes wander-g {
+  0%, 100% { left: 82%; top: 48%; transform: rotate(6deg); }
+  25% { left: 36%; top: 76%; transform: rotate(-8deg); }
+  50% { left: 4%; top: 18%; transform: rotate(5deg); }
+  75% { left: 64%; top: 34%; transform: rotate(-6deg); }
+}
+
+@keyframes wander-h {
+  0%, 100% { left: 8%; top: 44%; transform: rotate(-7deg); }
+  25% { left: 46%; top: 62%; transform: rotate(9deg); }
+  50% { left: 86%; top: 22%; transform: rotate(-5deg); }
+  75% { left: 30%; top: 8%; transform: rotate(7deg); }
+}
+
+@keyframes wander-i {
+  0%, 100% { left: 32%; top: 36%; transform: rotate(5deg); }
+  25% { left: 70%; top: 8%; transform: rotate(-9deg); }
+  50% { left: 16%; top: 86%; transform: rotate(6deg); }
+  75% { left: 88%; top: 58%; transform: rotate(-4deg); }
+}
+
+@keyframes wander-j {
+  0%, 100% { left: 58%; top: 48%; transform: rotate(-6deg); }
+  25% { left: 20%; top: 6%; transform: rotate(8deg); }
+  50% { left: 80%; top: 78%; transform: rotate(-7deg); }
+  75% { left: 6%; top: 62%; transform: rotate(5deg); }
+}
+
+@keyframes wander-k {
+  0%, 100% { left: 74%; top: 28%; transform: rotate(7deg); }
+  25% { left: 38%; top: 48%; transform: rotate(-5deg); }
+  50% { left: 12%; top: 24%; transform: rotate(9deg); }
+  75% { left: 52%; top: 76%; transform: rotate(-8deg); }
+}
+
+@keyframes wander-l {
+  0%, 100% { left: 24%; top: 54%; transform: rotate(-4deg); }
+  25% { left: 60%; top: 18%; transform: rotate(10deg); }
+  50% { left: 94%; top: 66%; transform: rotate(-6deg); }
+  75% { left: 44%; top: 92%; transform: rotate(8deg); }
 }
 
 .food-burst {

@@ -200,7 +200,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div className="app-root">
+      <div className="app-root app-visible">
         <FloatingFoodBackground />
         <div className="app loading-screen">Loading...</div>
       </div>
@@ -209,7 +209,7 @@ export default function App() {
 
   if (supabaseConfigured && !session) {
     return (
-      <div className="app-root">
+      <div className="app-root app-visible">
         <FloatingFoodBackground />
         <AuthScreen />
         <VortexTransition active={showVortex} onComplete={handleVortexComplete} />
@@ -219,7 +219,7 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className={`app-root ${appVisible ? 'app-visible' : ''}`}>
+      <div className={`app-root ${!showVortex ? 'app-visible' : 'app-entering'}`}>
         <FloatingFoodBackground />
         <div className="app">
           <header className="app-header glass-header">
@@ -239,7 +239,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app-root ${appVisible ? 'app-visible' : ''}`}>
+    <div className={`app-root ${appVisible ? 'app-visible' : 'app-entering'}`}>
       <FloatingFoodBackground />
       <RocketLoader active={rocketLoading} />
       <div className="app">
